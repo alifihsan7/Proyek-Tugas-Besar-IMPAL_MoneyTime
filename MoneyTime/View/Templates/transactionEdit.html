@@ -105,6 +105,62 @@
                 </div>
             </div>
         </div>
+
+        <!-- BARIS ALLOCATION (HANYA MUNCUL DI INCOME) -->
+        <div class="transaction-form-row" id="editAllocationSection" style="margin-top: 16px; padding: 20px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc;">
+            <div style="font-weight: 700; font-size: 15px; margin-bottom: 16px; color: #1e293b;">Alokasi Pemasukan (%)</div>
+            <div style="display: flex; gap: 24px; align-items: center; justify-content: space-between;">
+
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                    <label style="font-size: 14px; color: #475569; font-weight: 600;">Needs</label>
+                    <input type="number" id="editAllocNeeds" value="50" style="flex: 1; height: 42px; border-radius: 8px; border: 1px solid #cbd5e1; text-align: center; color: #16a34a; font-weight: 700; font-size: 14px; background: #fff;" min="0" max="100">
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                    <label style="font-size: 14px; color: #475569; font-weight: 600;">Wants</label>
+                    <input type="number" id="editAllocWants" value="30" style="flex: 1; height: 42px; border-radius: 8px; border: 1px solid #cbd5e1; text-align: center; color: #dc2626; font-weight: 700; font-size: 14px; background: #fff;" min="0" max="100">
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                    <label style="font-size: 14px; color: #475569; font-weight: 600;">Savings</label>
+                    <input type="number" id="editAllocSavings" value="20" style="flex: 1; height: 42px; border-radius: 8px; border: 1px solid #cbd5e1; text-align: center; color: #2563eb; font-weight: 700; font-size: 14px; background: #fff;" min="0" max="100">
+                </div>
+                
+            </div>
+            
+            <div id="editAllocWarning" style="color: #dc2626; font-size: 13px; font-weight: 500; margin-top: 12px; display: none;">
+                Total persentase harus 100%! (Saat ini: <span id="editAllocTotal">100</span>%)
+            </div>
+        </div>
+
+        <!-- BARIS EXPENSE SOURCE (HANYA MUNCUL DI EXPENSE) -->
+        <div class="transaction-form-row" id="editExpenseAllocationSection" style="display: none; margin-top: 16px; padding: 20px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc;">
+            <div style="font-weight: 700; font-size: 15px; margin-bottom: 16px; color: #1e293b;">Potong Saldo Dari</div>
+            
+            <div style="display: flex; gap: 16px;">
+                <label style="flex: 1; cursor: pointer;">
+                    <input type="radio" name="edit_expense_source" value="Needs" checked style="display: none;">
+                    <div class="expense-source-btn" style="border: 2px solid #16a34a; color: #16a34a; padding: 10px; text-align: center; border-radius: 8px; font-weight: 600; transition: all 0.2s;">
+                        <i class="fa-solid fa-heart"></i> Needs
+                    </div>
+                </label>
+
+                <label style="flex: 1; cursor: pointer;">
+                    <input type="radio" name="edit_expense_source" value="Wants" style="display: none;">
+                    <div class="expense-source-btn" style="border: 2px solid #dc2626; color: #dc2626; padding: 10px; text-align: center; border-radius: 8px; font-weight: 600; transition: all 0.2s;">
+                        <i class="fa-solid fa-cart-shopping"></i> Wants
+                    </div>
+                </label>
+
+                <label style="flex: 1; cursor: pointer;">
+                    <input type="radio" name="edit_expense_source" value="Savings" style="display: none;">
+                    <div class="expense-source-btn" style="border: 2px solid #2563eb; color: #2563eb; padding: 10px; text-align: center; border-radius: 8px; font-weight: 600; transition: all 0.2s;">
+                        <i class="fa-solid fa-piggy-bank"></i> Savings
+                    </div>
+                </label>
+            </div>
+        </div>
+
     </div>
 
     <div class="edit-transaction-actions">

@@ -43,8 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (editModalOverlay) {
                 // Close detail modal
                 closeDetailModal();
-                // The edit modal opening logic is in scriptTransactionEdit.js
-                // It will be triggered by the edit button click there
             }
         });
     }
@@ -164,6 +162,37 @@ function openTransactionDetail(transaction) {
     }
 
     document.getElementById('detailCategory').value = transaction.kategori || '-';
+
+    // --- LOGIKA BARU UNTUK SUMBER POTONGAN / ALOKASI ---
+    const allocationRow = document.getElementById('allocationRow');
+    const fundLabel = document.getElementById('detailFundLabel');
+    const fundInput = document.getElementById('detailFundSource');
+
+    if (transaction.alokasi_data && Object.keys(transaction.alokasi_data).length > 0) {
+        allocationRow.style.display = 'grid'; 
+        
+        if (transaction.type && transaction.type.toLowerCase() === 'income') {
+            // Tampilan Income
+            fundLabel.textContent = 'Allocation';
+            let allocTexts = [];
+            for (const [key, val] of Object.entries(transaction.alokasi_data)) {
+                const formattedVal = new Intl.NumberFormat('id-ID', {
+                    style: 'currency', currency: 'IDR', minimumFractionDigits: 0
+                }).format(val);
+                allocTexts.push(`${key} (${formattedVal})`);
+            }
+            fundInput.value = allocTexts.join('  |  ');
+        } else {
+            // Tampilan Expense
+            fundLabel.textContent = 'Source';
+            const sources = Object.keys(transaction.alokasi_data);
+            fundInput.value = sources.join(', ');
+        }
+    } else {
+        // Sembunyikan baris ini bila transaksi yang diklik adalah tipe lama/tanpa data alokasi
+        allocationRow.style.display = 'none';
+        fundInput.value = '-';
+    }
 
     detailModalOverlay.style.display = 'flex';
 }

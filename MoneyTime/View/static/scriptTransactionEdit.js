@@ -19,6 +19,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const editDateDisplay = document.getElementById('editDateDisplay');
     const editDateHidden = document.getElementById('editDate');
 
+    // ELEMEN ALLOCATION & SOURCE
+    const editAllocSection = document.getElementById('editAllocationSection');
+    const editExpenseSection = document.getElementById('editExpenseAllocationSection');
+    
+    const editNeeds = document.getElementById('editAllocNeeds');
+    const editWants = document.getElementById('editAllocWants');
+    const editSavings = document.getElementById('editAllocSavings');
+    const editAllocWarning = document.getElementById('editAllocWarning');
+    const editAllocTotal = document.getElementById('editAllocTotal');
+    const editExpenseRadios = document.querySelectorAll('input[name="edit_expense_source"]');
+
     // --- STATE ---
     let currentEditType = "Income";
     let initialFormData = {}; // Untuk cek discard changes
@@ -32,17 +43,21 @@ document.addEventListener('DOMContentLoaded', () => {
         editDetailBtn.parentNode.replaceChild(newBtn, editDetailBtn);
 
         newBtn.addEventListener('click', () => {
-            // Ambil data dari Modal Detail
+            // Ambil data dari Modal Detail & window
             const currentDesc = document.getElementById('detailDescription').value;
             const currentAmount = document.getElementById('detailAmount').value;
             const currentDateStr = document.getElementById('detailDate').value;
             const currentCat = document.getElementById('detailCategory').value;
+            
+            // Ambil raw data dari window.currentTransactionDetail (diset oleh detail modal)
+            const rawTransaction = window.currentTransactionDetail || {};
+            const alokasiData = rawTransaction.alokasi_data || {};
 
             // Cek tipe
             const isIncome = document.getElementById('detailTypeIncome').classList.contains('tab-active-blue');
             currentEditType = isIncome ? "Income" : "Expense";
 
-            // Isi Form
+            // Isi Form Umum
             updateEditTypeUI();
             editDescInput.value = currentDesc;
 
@@ -70,6 +85,34 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             editCategoryInput.value = currentCat;
+            
+            // Set Data Alokasi Spesifik
+            if (currentEditType === 'Income') {
+                if (Object.keys(alokasiData).length > 0) {
+                    const totalAmt = parseInt(rawAmount);
+                    if(totalAmt > 0){
+                       editNeeds.value = Math.round((alokasiData['Needs'] || 0) / totalAmt * 100);
+                       editWants.value = Math.round((alokasiData['Wants'] || 0) / totalAmt * 100);
+                       editSavings.value = Math.round((alokasiData['Savings'] || 0) / totalAmt * 100);
+                    }
+                } else {
+                    // Default fallback jika tidak ada data alokasi lama
+                    editNeeds.value = 50; editWants.value = 30; editSavings.value = 20;
+                }
+            } else {
+                // Set radio button Expense
+                const sourceNames = Object.keys(alokasiData);
+                let selectedSource = 'Needs'; // Default
+                if(sourceNames.length > 0) selectedSource = sourceNames[0];
+                
+                const targetRadio = document.querySelector(`input[name="edit_expense_source"][value="${selectedSource}"]`);
+                if(targetRadio) {
+                    targetRadio.checked = true;
+                    triggerExpenseRadioStyling();
+                }
+            }
+
+            validateEditAllocation();
 
             // Simpan state awal
             initialFormData = {
@@ -77,7 +120,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 desc: editDescInput.value,
                 amount: editAmountInput.value,
                 date: editDateDisplay.value,
-                cat: editCategoryInput.value
+                cat: editCategoryInput.value,
+                needs: editNeeds.value,
+                wants: editWants.value,
+                savings: editSavings.value,
+                expenseSource: document.querySelector('input[name="edit_expense_source"]:checked')?.value
             };
 
             // Switch Modal
@@ -86,15 +133,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 2. LOGIKA FORM ---
+    // --- 2. LOGIKA FORM UI ---
     function updateEditTypeUI() {
         if (currentEditType === "Income") {
             editTypeIncome.classList.add('active');
             editTypeExpense.classList.remove('active');
+            editAllocSection.style.display = 'block';
+            editExpenseSection.style.display = 'none';
         } else {
             editTypeExpense.classList.add('active');
             editTypeIncome.classList.remove('active');
+            editAllocSection.style.display = 'none';
+            editExpenseSection.style.display = 'block';
         }
+        validateEditAllocation();
     }
 
     if (editTypeIncome && editTypeExpense) {
@@ -109,6 +161,58 @@ document.addEventListener('DOMContentLoaded', () => {
         editAmountInput.value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
     if (editAmountInput) editAmountInput.addEventListener("input", formatEditAmount);
+    
+    // --- VALIDASI ALOKASI (NEW) ---
+    function validateEditAllocation() {
+        if (currentEditType !== "Income") {
+             if(editAllocWarning) editAllocWarning.style.display = "none";
+             return true; 
+        }
+
+        let n = parseInt(editNeeds?.value) || 0;
+        let w = parseInt(editWants?.value) || 0;
+        let s = parseInt(editSavings?.value) || 0;
+        let total = n + w + s;
+
+        if (editAllocTotal) editAllocTotal.textContent = total;
+
+        if (total !== 100) {
+            if (editAllocWarning) editAllocWarning.style.display = "block";
+            return false;
+        } else {
+            if (editAllocWarning) editAllocWarning.style.display = "none";
+            return true;
+        }
+    }
+
+    if (editNeeds) editNeeds.addEventListener("input", validateEditAllocation);
+    if (editWants) editWants.addEventListener("input", validateEditAllocation);
+    if (editSavings) editSavings.addEventListener("input", validateEditAllocation);
+
+    // --- WARNA TOMBOL SOURCE EXPENSE (NEW) ---
+    function triggerExpenseRadioStyling() {
+        document.querySelectorAll('#editExpenseAllocationSection .expense-source-btn').forEach(btn => {
+            btn.style.backgroundColor = 'transparent';
+            btn.style.color = btn.style.borderColor; 
+        });
+        
+        const checkedRadio = document.querySelector('input[name="edit_expense_source"]:checked');
+        if(checkedRadio) {
+            const activeBtn = checkedRadio.nextElementSibling;
+            if(activeBtn) {
+                activeBtn.style.backgroundColor = activeBtn.style.borderColor;
+                activeBtn.style.color = 'white';
+            }
+        }
+    }
+
+    if (editExpenseRadios.length > 0) {
+        editExpenseRadios.forEach(radio => {
+            radio.addEventListener('change', triggerExpenseRadioStyling);
+        });
+        triggerExpenseRadioStyling();
+    }
+
 
     // --- 4. KATEGORI DROPDOWN ---
     const editCatDropdown = document.getElementById("editCategoryDropdown");
@@ -121,7 +225,6 @@ document.addEventListener('DOMContentLoaded', () => {
         Expense: ["Needs", "Wants", "Savings", "Academic", "Project", "Organization", "Entertainment", "Other"]
     };
 
-    // Fetch API logic if categories change dynamically, similar to add modal
     async function fetchEditCategories() {
         try {
             const response = await fetch('/api/categories', { method: 'GET' });
@@ -141,13 +244,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadEditCategories() {
         if (!editCatList) return;
-        // Hapus item lama (selector class harus sesuai)
         Array.from(editCatList.querySelectorAll(".edit-dropdown-item")).forEach(i => i.remove());
 
         if (categories[currentEditType]) {
             categories[currentEditType].forEach(cat => {
                 const item = document.createElement("div");
-                item.className = "edit-dropdown-item"; // Class baru
+                item.className = "edit-dropdown-item"; 
                 item.textContent = cat;
                 item.onclick = () => {
                     editCategoryInput.value = cat;
@@ -219,13 +321,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         for (let i = 0; i < firstDay; i++) {
             const empty = document.createElement('div');
-            empty.className = 'edit-cal-day empty'; // Class baru
+            empty.className = 'edit-cal-day empty'; 
             editDaysGrid.appendChild(empty);
         }
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dayDiv = document.createElement('div');
-            dayDiv.className = 'edit-cal-day'; // Class baru
+            dayDiv.className = 'edit-cal-day'; 
             dayDiv.textContent = d;
 
             if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
@@ -263,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         shortMonths.forEach((m, idx) => {
             const div = document.createElement('div');
-            div.className = 'edit-cal-month'; // Class baru
+            div.className = 'edit-cal-month'; 
             div.textContent = m;
 
             if (idx === currentMonthIdx) div.classList.add('selected');
@@ -338,7 +440,11 @@ document.addEventListener('DOMContentLoaded', () => {
             editDescInput.value !== initialFormData.desc ||
             editAmountInput.value !== initialFormData.amount ||
             editDateDisplay.value !== initialFormData.date ||
-            editCategoryInput.value !== initialFormData.cat
+            editCategoryInput.value !== initialFormData.cat ||
+            editNeeds.value !== initialFormData.needs ||
+            editWants.value !== initialFormData.wants ||
+            editSavings.value !== initialFormData.savings ||
+            document.querySelector('input[name="edit_expense_source"]:checked')?.value !== initialFormData.expenseSource
         );
     }
 
@@ -387,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 7. TOMBOL CONFIRM ---
     if (confirmEditBtn) {
         confirmEditBtn.addEventListener('click', async () => {
-            // Validate all required fields
+            // Validasi Input Umum
             if (!editDescInput.value.trim()) {
                 showToast("Please enter a description.", "error");
                 editDescInput.focus();
@@ -416,7 +522,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Parse amount (remove formatting)
             const rawAmount = editAmountInput.value.replace(/[^0-9]/g, '');
             if (!rawAmount || parseInt(rawAmount) <= 0) {
                 showToast("Please enter a valid amount.", "error");
@@ -424,26 +529,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Ensure date is in correct format
             if (!editDateHidden.value) {
                 showToast("Please select a valid date.", "error");
                 return;
             }
+            
+            // Validasi Alokasi khusus Income
+            if (currentEditType === 'Income' && !validateEditAllocation()) {
+                showToast("Total persentase alokasi harus 100%.", "error");
+                return;
+            }
+            
+            // Susun Payload
+            let payload = {
+                id: transactionId,
+                type: currentEditType,
+                description: editDescInput.value.trim(),
+                amount: rawAmount,
+                date: editDateHidden.value,
+                category: editCategoryInput.value.trim()
+            };
+            
+            // Masukkan data tambahan ke API Payload sama seperti saat add
+            if (currentEditType === "Income") {
+                payload.allocation = {
+                    Needs: parseInt(editNeeds.value) || 0,
+                    Wants: parseInt(editWants.value) || 0,
+                    Savings: parseInt(editSavings.value) || 0
+                };
+            } else if (currentEditType === "Expense") {
+                const expenseSourceBtn = document.querySelector('input[name="edit_expense_source"]:checked');
+                if (expenseSourceBtn) {
+                    payload.expense_source = expenseSourceBtn.value;
+                }
+            }
 
             try {
+                // Catatan: Pastikan endpoint Backend /edit-transaction kamu sudah dimodifikasi 
+                // untuk bisa menangkap parameter "allocation" & "expense_source" persis seperti pada /add-transaction
                 const response = await fetch('/edit-transaction', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        id: transactionId,
-                        type: currentEditType,
-                        description: editDescInput.value.trim(),
-                        amount: rawAmount,
-                        date: editDateHidden.value,
-                        category: editCategoryInput.value.trim()
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
@@ -451,14 +580,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (result.success) {
                     showSuccessModal();
                     closeEditModal();
-                    // Refresh dashboard data
                     if (typeof fetchTransactions === 'function') {
                         fetchTransactions();
                     } else {
                         location.reload();
                     }
                 } else {
-                    // Show error in transaction detail modal
                     const detailModal = document.getElementById('transaction-detail-modal-overlay');
                     if (detailModal) {
                         detailModal.style.display = 'flex';
