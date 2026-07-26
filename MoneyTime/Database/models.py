@@ -15,6 +15,7 @@ class User(db.Model):
     aktivitas = db.relationship("Aktivitas", back_populates="user", cascade="all, delete-orphan")
     finansial = db.relationship("Finansial", back_populates="user", cascade="all, delete-orphan")
     chatlogs = db.relationship("Chatlog", back_populates="user", cascade="all, delete-orphan")
+    rutinitas = db.relationship("Rutinitas", back_populates="user", cascade="all, delete-orphan")
 
 # Aktivitas Class
 class Aktivitas(db.Model):
@@ -34,6 +35,22 @@ class Aktivitas(db.Model):
 
     # Relation
     user = db.relationship("User", back_populates="aktivitas") 
+
+# Rutinitas Class
+class Rutinitas(db.Model):
+    __tablename__ = 'Rutinitas'
+    
+    # Table
+    rutinitasid = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    userid = db.Column(db.Integer, db.ForeignKey('User.id'))
+    nama_task = db.Column(db.Text)
+    hari = db.Column(db.Text)        
+    waktu = db.Column(db.Text)       
+    prioritas = db.Column(db.Text)   
+    status = db.Column(db.Text, default="To Do") 
+    
+    # Relation
+    user = db.relationship("User", back_populates="rutinitas")
 
 # Finansial Class
 class Finansial(db.Model):
