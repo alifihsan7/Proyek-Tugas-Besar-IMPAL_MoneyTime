@@ -1,6 +1,6 @@
 from Utils.marshmallow import marshmallow
 from marshmallow import validate, fields
-from Database.models import User, Aktivitas, Finansial, Pemasukkan, Pengeluaran, Alokasi, Chatlog
+from Database.models import User, Aktivitas, Finansial, Pemasukkan, Pengeluaran, Alokasi, Chatlog, Rutinitas
 from Database.models import db 
 
 # User Schema
@@ -45,7 +45,7 @@ class PemasukkanSchema(marshmallow.SQLAlchemyAutoSchema):
         include_fk = True
         sqla_session = db.session
         
-    nominal = marshmallow.auto_field(validate=validate.Range(min=0.01, error="Nominal must higher than 0"))
+    nominal = marshmallow.auto_field(validate=validate.Range(min=-0.01, error="Nominal must higher than 0"))
 
 # Pengeluaran Schema
 class PengeluaranSchema(marshmallow.SQLAlchemyAutoSchema):
@@ -55,7 +55,7 @@ class PengeluaranSchema(marshmallow.SQLAlchemyAutoSchema):
         include_fk = True
         sqla_session = db.session
         
-    nominal = marshmallow.auto_field(validate=validate.Range(min=0.01, error="Nominal must higher than 0"))
+    nominal = marshmallow.auto_field(validate=validate.Range(min=-0.01, error="Nominal must higher than 0"))
 
 # Alokasi Schema
 class AlokasiSchema(marshmallow.SQLAlchemyAutoSchema):
@@ -65,7 +65,7 @@ class AlokasiSchema(marshmallow.SQLAlchemyAutoSchema):
         include_fk = True
         sqla_session = db.session
         
-    nominal_alokasi = marshmallow.auto_field(validate=validate.Range(min=0.01, error="Nominal must higher than 0"))
+    nominal_alokasi = marshmallow.auto_field(validate=validate.Range(min=-0.01, error="Nominal must higher than 0"))
 
 # Chatlog Schema
 class ChatlogSchema(marshmallow.SQLAlchemyAutoSchema):
@@ -77,3 +77,17 @@ class ChatlogSchema(marshmallow.SQLAlchemyAutoSchema):
 
     message = marshmallow.auto_field(validate=validate.Length(min=1, max=1000, error="Max Chat is 1000 Characters."))
     role = marshmallow.auto_field(validate=validate.OneOf(["user", "assistant", "system", "tool"]))
+
+# Rutinitas Schema
+class RutinitasSchema(marshmallow.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Rutinitas
+        load_instance = True
+        include_fk = True 
+        sqla_session = db.session
+
+    nama_task = marshmallow.auto_field(validate=validate.Length(min=1, error="Task name cannot be empty"))
+    hari = marshmallow.auto_field(validate=validate.Length(min=1))
+    waktu = marshmallow.auto_field(validate=validate.Length(min=1))
+    prioritas = marshmallow.auto_field(validate=validate.OneOf(["Low", "Medium", "High", "Critical"]), load_default="Medium")
+    status = marshmallow.auto_field(validate=validate.OneOf(["To Do", "Done", "Skipped"]), load_default="To Do")
