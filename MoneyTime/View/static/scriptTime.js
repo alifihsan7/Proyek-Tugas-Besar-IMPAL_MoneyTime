@@ -1,3 +1,10 @@
+// Variabel State Global
+let currentViewMode = 'list'; 
+// State untuk Drag & Drop
+let draggedTaskId = null;
+let dragOffsetY = 0;
+let isDragging = false;
+
 document.addEventListener('DOMContentLoaded', () => {
     
     // ==========================================
@@ -15,325 +22,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 2. CORE VARIABLES & HELPERS 
+    // 2. TOGGLE VIEW (LIST VS CALENDAR)
     // ==========================================
-    let currentFilter = 'all'; 
-    let allSchedules = [];     
+    const toggleViewBtn = document.getElementById('toggleViewBtn');
+    const viewList = document.getElementById('view-list');
+    const viewBlock = document.getElementById('view-block');
+    const listTabs = document.getElementById('list-tabs');
 
-    const searchInput = document.getElementById('searchInput'); 
-    const scheduleListSection = document.querySelector('.schedule-list-section');
-
-    // ==========================================
-    // 3. COLOR LOGIC (Tetap 30 Warna Asli)
-    // ==========================================
-    const distinctColorsSchedule = [
-        "#FF0000", "#0000FF", "#008000", "#FFD700", "#800080", 
-        "#ffd700", "#FF00FF", "#FF4500", "#00CED1", "#2E8B57", 
-        "#8B4513", "#4682B4", "#D2691E", "#9ACD32", "#4B0082", 
-        "#DC143C", "#000080", "#DAA520", "#808000", "#708090", 
-        "#FF1493", "#7B68EE", "#00FA9A", "#C71585", "#191970", 
-        "#556B2F", "#FF6347", "#40E0D0", "#8B0000", "#9932CC"
-    ];
-
-    let scheduleCategoryColorMap = {};
-
-    function assignColorsToCategories(schedules) {
-        scheduleCategoryColorMap = {};
-        const uniqueCategories = [...new Set(schedules.map(s => s.category || "Other"))].sort();
-        
-        uniqueCategories.forEach((cat, index) => {
-            scheduleCategoryColorMap[cat] = distinctColorsSchedule[index % distinctColorsSchedule.length];
-        });
-    }
-
-    function getCategoryColor(categoryName) {
-        const cat = categoryName || "Other";
-        return scheduleCategoryColorMap[cat] || "#333333";
-    }
-
-    // ==========================================
-    // 4. FETCH & RENDER SCHEDULES
-    // ==========================================
-
-    async function fetchAndRenderSchedules() {
-        try {
-            const response = await fetch('/api/schedules'); 
-            const data = await response.json();
-
-            if (data.success) {
-                allSchedules = data.schedules; 
-                assignColorsToCategories(allSchedules);
-                
+    if(toggleViewBtn) {
+        toggleViewBtn.addEventListener('click', () => {
+            if(currentViewMode === 'list') {
+                currentViewMode = 'block';
+                viewList.style.display = 'none';
+                listTabs.style.display = 'none';
+                viewBlock.style.display = 'block';
+                toggleViewBtn.innerHTML = '<i class="fa-solid fa-list"></i>'; 
+                renderTimeBlocks(allSchedules); 
+            } else {
+                currentViewMode = 'list';
+                viewBlock.style.display = 'none';
+                viewList.style.display = 'block';
+                listTabs.style.display = 'flex';
+                toggleViewBtn.innerHTML = '<i class="fa-solid fa-calendar-week"></i>';
                 searchHandler(); 
-                updateSummaryCards(allSchedules);
-            }
-        } catch (error) {
-            console.error('Error fetching schedules:', error);
-        }
-    }
-
-    window.fetchSchedules = fetchAndRenderSchedules;
-
-    function renderGroupedSchedules(schedules) {
-        const containers = {
-            today: document.querySelector('#group-today .trans-items'),
-            next7: document.querySelector('#group-next7 .trans-items'),
-            later: document.querySelector('#group-later .trans-items'),
-            completed: document.querySelector('#group-completed .trans-items')
-        };
-
-        Object.values(containers).forEach(el => { if(el) el.innerHTML = ''; });
-        
-        const oldMsg = document.getElementById('schedule-not-found-msg');
-        if(oldMsg) oldMsg.remove();
-
-        const now = new Date();
-        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-        const next7DaysEnd = new Date(todayStart); next7DaysEnd.setDate(todayStart.getDate() + 7);
-
-        // MODIFIKASI: Kumpulkan data ke array dulu agar bisa di-sort
-        const groups = { today: [], next7: [], later: [], completed: [] };
-        let hasDataDisplayed = false;
-
-        schedules.forEach(sch => {
-            if (!sch.date) return;
-
-            const timeString = sch.time ? sch.time : "00:00";
-            const dateTimeString = `${sch.date}T${timeString}:00`; 
-            const schDateTime = new Date(dateTimeString); 
-            const schDateOnly = new Date(sch.date); 
-            schDateOnly.setHours(0,0,0,0);
-
-            const status = (sch.status || 'Pending');
-
-            if (status === 'Completed' || status === 'WontDo' || schDateTime < now) {
-                groups.completed.push(sch);
-            } else {
-                if (schDateOnly.getTime() === todayStart.getTime()) {
-                    groups.today.push(sch);
-                } else if (schDateOnly > todayStart && schDateOnly <= next7DaysEnd) {
-                    groups.next7.push(sch);
-                } else if (schDateOnly > next7DaysEnd) {
-                    groups.later.push(sch);
-                }
-            }
-        });
-
-        // --- SORTING KHUSUS: OVERDUE DI ATAS COMPLETED ---
-        groups.completed.sort((a, b) => {
-            const timeA = new Date(`${a.date}T${a.time || "00:00"}:00`);
-            const timeB = new Date(`${b.date}T${b.time || "00:00"}:00`);
-            const isOverdueA = (a.status !== 'Completed' && a.status !== 'WontDo' && timeA < now);
-            const isOverdueB = (b.status !== 'Completed' && b.status !== 'WontDo' && timeB < now);
-
-            if (isOverdueA && !isOverdueB) return -1;
-            if (!isOverdueA && isOverdueB) return 1;
-            return timeB - timeA; 
-        });
-
-        // Masukkan item yang sudah di-sort ke container
-        for (const [key, items] of Object.entries(groups)) {
-            if (containers[key]) {
-                items.forEach(sch => {
-                    const itemHTML = createScheduleItemHTML(sch, now);
-                    containers[key].insertAdjacentHTML('beforeend', itemHTML);
-                    hasDataDisplayed = true;
-                });
-                
-                let baseTitle = key.charAt(0).toUpperCase() + key.slice(1);
-                if(key === 'next7') baseTitle = "Next 7 Days";
-                if(key === 'completed') baseTitle = "Completed & Overdue";
-                
-                updateGroupHeader(`group-${key}`, baseTitle, items.length);
-            }
-        }
-
-        applyTabFilter();
-        
-        if (!hasDataDisplayed && scheduleListSection) {
-            ['group-today', 'group-next7', 'group-later', 'group-completed'].forEach(id => {
-                const el = document.getElementById(id);
-                if(el) el.style.display = 'none';
-            });
-            
-            const msgDiv = document.createElement('div');
-            msgDiv.id = 'schedule-not-found-msg';
-            msgDiv.style.textAlign = 'center';
-            msgDiv.style.padding = '40px';
-            msgDiv.style.color = '#888';
-            
-            const query = searchInput ? searchInput.value.trim() : '';
-            if (query.length > 0) {
-                msgDiv.innerHTML = `<i class="fa-solid fa-magnifying-glass" style="font-size: 24px; margin-bottom: 10px;"></i><br>Jadwal "${query}" tidak ditemukan.`;
-            } else {
-                msgDiv.innerHTML = `<p>Belum ada jadwal pada kategori ini.</p>`;
-            }
-            scheduleListSection.appendChild(msgDiv);
-        }
-
-        attachItemListeners();
-    }
-
-    function updateGroupHeader(groupId, baseTitle, count) {
-        const group = document.getElementById(groupId);
-        if (group) {
-            const titleEl = group.querySelector('.day-name');
-            if (titleEl) titleEl.textContent = `${baseTitle} (${count})`;
-            group.setAttribute('data-count', count); 
-            initViewMore(groupId, count);
-        }
-    }
-
-    function applyTabFilter() {
-        const groups = ['group-today', 'group-next7', 'group-later', 'group-completed'];
-        groups.forEach(gid => {
-            const el = document.getElementById(gid);
-            if (!el) return;
-            const count = parseInt(el.getAttribute('data-count') || '0');
-            
-            if (currentFilter === 'all') {
-                el.style.display = count > 0 ? 'block' : 'none';
-            } else {
-                el.style.display = (gid === currentFilter && count > 0) ? 'block' : 'none';
             }
         });
     }
 
-    function createScheduleItemHTML(sch, now) {
-        const timeString = sch.time ? sch.time : "00:00";
-        const schDateTime = new Date(`${sch.date}T${timeString}:00`);
-        const isExpired = schDateTime < now;
-        
-        const dateObj = new Date(sch.date);
-        const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        
-        let onClickAttribute = `onclick="toggleStatus(event, ${sch.id}, '${sch.status}')"`;
-        
-        let dateHTML = `<span class="sch-date">${dateStr}</span>`;
-        let checkboxClass = 'sch-checkbox';
-        let iconHTML = '<i class="fa-solid fa-check check-mark" style="display:none"></i>';
-        
-        if (sch.status === 'Completed') {
-            checkboxClass += ' checked';
-            iconHTML = '<i class="fa-solid fa-check check-mark" style="display:block"></i>';
-        } else if (sch.status === 'WontDo') {
-            checkboxClass += ' wontdo';
-            iconHTML = '<i class="fa-solid fa-xmark x-mark" style="display:block"></i>';
-        }
-
-        if (isExpired && sch.status === 'Pending') {
-            dateHTML = `<span class="sch-date text-red">${dateStr}<br><span class="overdue-text">(Overdue)</span></span>`;
-        }
-
-        const prioClass = (sch.priority || 'none').toLowerCase();
-        const catName = sch.category || "Other";
-        const bgColor = getCategoryColor(catName);
-        const itemData = JSON.stringify(sch).replace(/"/g, '&quot;');
-
-        return `
-            <div class="t-item schedule-row" data-json="${itemData}">
-                <div class="sch-left">
-                    <div class="priority-dot ${prioClass}"></div>
-                    <div class="${checkboxClass}" ${onClickAttribute}>
-                        ${iconHTML}
-                    </div>
-                    <div class="sch-info">
-                        <div class="sch-title">${sch.title}</div>
-                        <div class="sch-time">${sch.time}</div>
-                    </div>
-                </div>
-                <div class="sch-center">
-                    <span class="t-badge" style="background-color: ${bgColor}; color: #ffffff;">${catName}</span>
-                </div>
-                <div class="sch-right">
-                    ${dateHTML}
-                </div>
-            </div>
-        `;
-    }
-
-    function updateSummaryCards(schedules) {
-        const now = new Date();
-        const upcoming = schedules.filter(s => {
-            const schTime = new Date(`${s.date}T${s.time || "00:00"}:00`);
-            return schTime >= now && s.status === 'Pending';
-        }).length;
-        const completed = schedules.filter(s => s.status === 'Completed').length;
-        const overdue = schedules.filter(s => {
-            const schTime = new Date(`${s.date}T${s.time || "00:00"}:00`);
-            return schTime < now && s.status === 'Pending';
-        }).length;
-
-        const cards = document.querySelectorAll('.m-card .card-amount');
-        if(cards.length >= 3) {
-            cards[0].textContent = upcoming;
-            cards[1].textContent = completed;
-            cards[2].textContent = overdue;
+    // Generate Label Waktu per 30 Menit (00:00, 00:30, dst)
+    function setupTimeLabels() {
+        const labelsContainer = document.getElementById('tb-time-labels');
+        if(!labelsContainer) return;
+        labelsContainer.innerHTML = '';
+        for(let i = 0; i < 24; i++) {
+            const hour = i.toString().padStart(2, '0');
+            labelsContainer.innerHTML += `<div class="tb-time-label">${hour}:00</div>`;
+            labelsContainer.innerHTML += `<div class="tb-time-label">${hour}:30</div>`;
         }
     }
+    setupTimeLabels();
 
-    // --- MODIFIKASI: TOGGLE STATUS REAL-TIME (INSTAN TANPA RELOAD) ---
-    window.toggleStatus = async function(e, id, currentStatus) {
-        e.stopPropagation();
-        let newStatus = (currentStatus === 'Completed' || currentStatus === 'WontDo') ? 'Pending' : 'Completed';
+    // ==========================================
+    // 3. CORE VARIABLES & TABS
+    // ==========================================
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    let currentFilter = days[new Date().getDay()]; 
+    let allSchedules = [];     
+    const searchInput = document.getElementById('searchInput'); 
+    const taskContainer = document.getElementById('daily-task-list');
 
-        const scheduleIndex = allSchedules.findIndex(s => s.id === id);
-        if (scheduleIndex !== -1) {
-            const oldStatus = allSchedules[scheduleIndex].status;
-            allSchedules[scheduleIndex].status = newStatus;
-
-            // Update UI lokal seketika
-            searchHandler(); 
-            updateSummaryCards(allSchedules);
-
-            try {
-                const response = await fetch('/update-schedule-status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: id, status: newStatus })
-                });
-                const res = await response.json();
-                if (!res.success) throw new Error();
-            } catch (err) {
-                // Revert jika gagal
-                allSchedules[scheduleIndex].status = oldStatus;
-                searchHandler();
-                updateSummaryCards(allSchedules);
-                if (typeof showToast === 'function') showToast("Gagal memperbarui status.", "error");
-            }
-        }
-    };
-
-    function attachItemListeners() {
-        document.querySelectorAll('.schedule-row').forEach(row => {
-            row.addEventListener('click', () => {
-                const data = JSON.parse(row.getAttribute('data-json'));
-                if (typeof openScheduleDetail === 'function') openScheduleDetail(data);
-            });
-        });
-    }
-
-    function searchHandler() {
-        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-        let filteredData = allSchedules;
-
-        if (query.length > 0) {
-            filteredData = filteredData.filter(sch => 
-                (sch.title || "").toLowerCase().includes(query) ||
-                (sch.category || "").toLowerCase().includes(query) ||
-                (sch.description || "").toLowerCase().includes(query)
-            );
-        }
-        renderGroupedSchedules(filteredData);
-    }
-
-    if (searchInput) {
-        let timeout = null;
-        searchInput.addEventListener('input', () => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => { searchHandler(); }, 300); 
-        });
-    }
+    document.querySelectorAll('.time-tab').forEach(tab => {
+        if(tab.dataset.target === currentFilter) tab.classList.add('active');
+        else tab.classList.remove('active');
+    });
 
     const tabs = document.querySelectorAll('.time-tab');
     tabs.forEach(tab => {
@@ -345,71 +86,321 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const MAX_ITEMS = 5; 
+    const distinctColorsSchedule = [
+        "#4682B4", "#2E8B57", "#D2691E", "#9ACD32", "#4B0082", 
+        "#DC143C", "#000080", "#DAA520", "#808000", "#708090"
+    ];
+    let scheduleCategoryColorMap = {};
 
-    function initViewMore(groupId, count) {
-        const group = document.getElementById(groupId);
-        const btn = group.querySelector('.view-more');
-        const items = group.querySelectorAll('.schedule-row');
-        
-        items.forEach(i => i.classList.remove('hidden-task'));
-        if (btn) btn.style.display = 'none';
+    function getCategoryColor(dayName) {
+        if(!scheduleCategoryColorMap[dayName]) {
+            const hash = dayName.charCodeAt(0) + dayName.charCodeAt(1);
+            scheduleCategoryColorMap[dayName] = distinctColorsSchedule[hash % distinctColorsSchedule.length];
+        }
+        return scheduleCategoryColorMap[dayName];
+    }
 
-        if (count > MAX_ITEMS) {
-            items.forEach((item, index) => {
-                if (index >= MAX_ITEMS) item.classList.add('hidden-task');
-            });
+    // ==========================================
+    // 4. FETCH & RENDER LOGIC
+    // ==========================================
+    async function fetchAndRenderTasks() {
+        try {
+            const response = await fetch('/api/rutinitas'); 
             
-            if (btn) {
-                btn.style.display = 'block';
-                btn.textContent = 'View more';
-                
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                
-                newBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const isExpanded = newBtn.textContent === 'View less';
-                    const currentItems = group.querySelectorAll('.schedule-row');
-                    
-                    if (isExpanded) {
-                        currentItems.forEach((item, idx) => {
-                            if (idx >= MAX_ITEMS) item.classList.add('hidden-task');
-                        });
-                        newBtn.textContent = 'View more';
-                    } else {
-                        currentItems.forEach(item => item.classList.remove('hidden-task'));
-                        newBtn.textContent = 'View less';
-                    }
-                });
+            if (!response.ok) {
+                // Fallback Mock Data
+                allSchedules = [
+                    { id: 1, title: 'Wake Up', hari: 'Monday', time: '03.00 - 04.00', priority: 'High', status: 'To Do' },
+                    { id: 2, title: 'Project Moneytime', hari: 'Monday', time: '04.00 - 05.00', priority: 'Medium', status: 'To Do' }
+                ];
+            } else {
+                const data = await response.json();
+                if (data.success) allSchedules = data.data; 
             }
+            
+            if(currentViewMode === 'list') searchHandler(); 
+            else renderTimeBlocks(allSchedules);
+            updateSummaryCards(allSchedules);
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+        }
+    }
+    window.fetchSchedules = fetchAndRenderTasks;
+
+    // --- A. Render List View ---
+    function renderDailyTasks(tasks) {
+        if (!taskContainer) return;
+        taskContainer.innerHTML = '';
+        const oldMsg = document.getElementById('schedule-not-found-msg');
+        if(oldMsg) oldMsg.remove();
+
+        let filteredByDay = tasks.filter(task => task.hari === currentFilter);
+        if (filteredByDay.length === 0) {
+            taskContainer.innerHTML = `<div id="schedule-not-found-msg" style="text-align: center; padding: 40px; color: #888;"><p>Belum ada jadwal untuk hari ${currentFilter}.</p></div>`;
+            return;
+        }
+
+        filteredByDay.forEach(task => taskContainer.insertAdjacentHTML('beforeend', createDailyTaskHTML(task)));
+        attachItemListeners();
+    }
+
+    function createDailyTaskHTML(task) {
+        let checkboxClass = 'sch-checkbox';
+        let iconHTML = '<i class="fa-solid fa-check check-mark" style="display:none"></i>';
+        let statusBadgeClass = 'status-todo';
+        let statusText = 'To Do';
+        
+        if (task.status === 'Completed' || task.status === 'Done') {
+            checkboxClass += ' checked';
+            iconHTML = '<i class="fa-solid fa-check check-mark" style="display:block; color:white;"></i>';
+            statusBadgeClass = 'status-done';
+            statusText = 'Done';
+        }
+
+        const prioText = task.priority || "Medium";
+        const prioClass = `prio-${prioText.toLowerCase()}`;
+        const dayBadgeColor = getCategoryColor(task.hari || "Monday");
+        const onClickAttribute = `onclick="toggleStatus(event, ${task.id}, '${task.status}')"`;
+        const itemData = JSON.stringify(task).replace(/"/g, '&quot;');
+
+        return `
+            <div class="t-item daily-task-row" data-json="${itemData}">
+                <div class="col-task">
+                    <div class="${checkboxClass}" ${onClickAttribute}>${iconHTML}</div>
+                    <span class="task-name-text">${task.title}</span>
+                </div>
+                <div class="col-day"><span class="t-badge" style="background-color: ${dayBadgeColor}; color: white;">${task.hari}</span></div>
+                <div class="col-time"><span style="font-weight: 500; color: #555;">${task.time}</span></div>
+                <div class="col-status">
+                    <div class="status-badge ${statusBadgeClass}"><div class="priority-dot ${task.status === 'Done' || task.status === 'Completed' ? 'low' : 'none'}"></div>${statusText}</div>
+                </div>
+                <div class="col-priority"><span class="prio-badge ${prioClass}">${prioText}</span></div>
+            </div>
+        `;
+    }
+
+    // --- B. Logika Time Range & Drag Drop ---
+    function parseTimeRange(timeStr) {
+        try {
+            const parts = timeStr.split('-');
+            if(parts.length !== 2) return null;
+            const startParts = parts[0].trim().replace(':', '.').split('.');
+            const endParts = parts[1].trim().replace(':', '.').split('.');
+
+            const startTotalMins = (parseInt(startParts[0]) * 60) + parseInt(startParts[1] || 0);
+            let endTotalMins = (parseInt(endParts[0]) * 60) + parseInt(endParts[1] || 0);
+            if(endTotalMins < startTotalMins) endTotalMins += (24 * 60); 
+
+            return { startMins: startTotalMins, duration: endTotalMins - startTotalMins };
+        } catch (e) { return null; }
+    }
+
+    function renderTimeBlocks(tasks) {
+        document.querySelectorAll('.tb-day-col').forEach(col => col.innerHTML = '');
+
+        tasks.forEach(task => {
+            const timeData = parseTimeRange(task.time);
+            if(!timeData) return; 
+
+            const dayCol = document.querySelector(`.tb-day-col[data-day="${task.hari}"]`);
+            if(!dayCol) return;
+
+            let prioClass = `prio-${(task.priority || 'medium').toLowerCase()}`;
+            let statusClass = (task.status === 'Completed' || task.status === 'Done') ? 'status-done' : '';
+
+            const blockHTML = `
+                <div class="tb-task-block ${prioClass} ${statusClass}" 
+                     draggable="true" 
+                     data-id="${task.id}"
+                     style="top: ${timeData.startMins}px; height: ${timeData.duration}px;">
+                    <div class="tb-task-title" title="${task.title}">${task.title}</div>
+                    <div class="tb-task-time">${task.time}</div>
+                </div>
+            `;
+            dayCol.insertAdjacentHTML('beforeend', blockHTML);
+        });
+
+        document.querySelectorAll('.tb-task-block').forEach(block => {
+            block.addEventListener('dragstart', (e) => {
+                isDragging = true;
+                draggedTaskId = parseInt(block.dataset.id);
+                const rect = block.getBoundingClientRect();
+                dragOffsetY = e.clientY - rect.top; 
+                setTimeout(() => block.classList.add('dragging'), 0);
+            });
+
+            block.addEventListener('dragend', () => {
+                setTimeout(() => { isDragging = false; }, 50); 
+                block.classList.remove('dragging');
+                document.querySelectorAll('.tb-day-col').forEach(c => c.classList.remove('drag-over'));
+            });
+
+            block.addEventListener('click', (e) => {
+                if (isDragging) return; 
+                const task = allSchedules.find(t => t.id === parseInt(block.dataset.id));
+                if(task) toggleStatus(e, task.id, task.status);
+            });
+        });
+    }
+
+    document.querySelectorAll('.tb-day-col').forEach(col => {
+        col.addEventListener('dragover', (e) => {
+            e.preventDefault(); 
+            col.classList.add('drag-over');
+        });
+        col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+        col.addEventListener('drop', handleDrop);
+    });
+
+    async function handleDrop(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('drag-over');
+        
+        if (!draggedTaskId) return;
+
+        const targetCol = e.currentTarget;
+        const newDay = targetCol.dataset.day;
+
+        const colRect = targetCol.getBoundingClientRect();
+        let rawY = e.clientY - colRect.top - dragOffsetY; 
+        if (rawY < 0) rawY = 0;
+
+        const snapMins = 30;
+        let newStartMins = Math.round(rawY / snapMins) * snapMins;
+        
+        const task = allSchedules.find(t => t.id === draggedTaskId);
+        if (!task) return;
+        
+        const duration = parseTimeRange(task.time).duration;
+        let newEndMins = newStartMins + duration;
+
+        // --- SISTEM DETEKSI BENTROK FRONTEND ---
+        const hasCollision = allSchedules.some(t => {
+            // Abaikan diri sendiri atau hari yang berbeda
+            if (t.id === draggedTaskId || t.hari !== newDay) return false;
+            
+            const tRange = parseTimeRange(t.time);
+            if (!tRange) return false;
+            
+            const tStart = tRange.startMins;
+            const tEnd = tStart + tRange.duration;
+            
+            // Logika Tabrakan
+            return newStartMins < tEnd && newEndMins > tStart;
+        });
+
+        if (hasCollision) {
+            showToast("Gagal dipindahkan! Jadwal bertabrakan dengan rutinitas lain.", "error");
+            searchHandler(); // Revert posisi
+            return; // Hentikan proses, jangan panggil API
+        }
+        // ----------------------------------------
+
+        const formatTime = (mins) => {
+            let h = Math.floor(mins / 60) % 24;
+            let m = mins % 60;
+            return `${h.toString().padStart(2,'0')}.${m.toString().padStart(2,'0')}`;
+        };
+        const newTimeStr = `${formatTime(newStartMins)} - ${formatTime(newEndMins)}`;
+
+        const oldDay = task.hari;
+        const oldTime = task.time;
+        
+        task.hari = newDay;
+        task.time = newTimeStr;
+
+        searchHandler(); // Render UI Instan
+
+        try {
+            const response = await fetch(`/api/rutinitas/${task.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    nama_task: task.title, 
+                    hari: task.hari, 
+                    waktu: task.time, 
+                    prioritas: task.priority 
+                })
+            });
+            const res = await response.json();
+            if (!res.success) throw new Error();
+            showToast("Jadwal diperbarui!", "success");
+        } catch (err) {
+            task.hari = oldDay;
+            task.time = oldTime;
+            searchHandler();
+            showToast("Gagal memindahkan jadwal.", "error");
         }
     }
 
-    const groupHeaders = document.querySelectorAll('.toggle-group-btn');
-    groupHeaders.forEach(header => {
-        header.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const card = header.closest('.day-card');
-            const content = card.querySelector('.trans-items');
-            const icon = header.querySelector('.toggle-icon');
-            const viewMoreBtn = card.querySelector('.view-more');
+    // ==========================================
+    // 5. UTILITIES
+    // ==========================================
+    function updateSummaryCards(tasks) {
+        const total = tasks.length;
+        const completed = tasks.filter(s => s.status === 'Done' || s.status === 'Completed').length;
+        const todo = total - completed;
 
-            const isHidden = content.style.display === 'none';
+        if(document.getElementById('sum-total')) document.getElementById('sum-total').textContent = total;
+        if(document.getElementById('sum-completed')) document.getElementById('sum-completed').textContent = completed;
+        if(document.getElementById('sum-todo')) document.getElementById('sum-todo').textContent = todo;
+    }
 
-            if (isHidden) {
-                content.style.display = 'block';
-                if (icon) icon.style.transform = 'rotate(0deg)';
-                if (viewMoreBtn && card.getAttribute('data-count') > MAX_ITEMS) {
-                    viewMoreBtn.style.display = 'block';
-                }
-            } else {
-                content.style.display = 'none';
-                if (icon) icon.style.transform = 'rotate(-90deg)';
-                if (viewMoreBtn) viewMoreBtn.style.display = 'none';
+    window.toggleStatus = async function(e, id, currentStatus) {
+        e.stopPropagation();
+        let newStatus = (currentStatus === 'Completed' || currentStatus === 'Done') ? 'To Do' : 'Done';
+        const scheduleIndex = allSchedules.findIndex(s => s.id === id);
+        
+        if (scheduleIndex !== -1) {
+            const oldStatus = allSchedules[scheduleIndex].status;
+            allSchedules[scheduleIndex].status = newStatus;
+            searchHandler(); 
+            updateSummaryCards(allSchedules);
+
+            try {
+                const response = await fetch(`/api/rutinitas/${id}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const res = await response.json();
+                if (!res.success) throw new Error();
+            } catch (err) {
+                allSchedules[scheduleIndex].status = oldStatus;
+                searchHandler();
+                updateSummaryCards(allSchedules);
+                showToast("Gagal memperbarui status.", "error");
             }
+        }
+    };
+
+    function attachItemListeners() {
+        document.querySelectorAll('.daily-task-row').forEach(row => {
+            row.addEventListener('click', () => {
+                const data = JSON.parse(row.getAttribute('data-json'));
+                if (typeof openScheduleDetail === 'function') openScheduleDetail(data);
+            });
         });
-    });
+    }
+
+    function searchHandler() {
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        let filteredData = allSchedules;
+        if (query.length > 0) {
+            filteredData = filteredData.filter(sch => (sch.title || "").toLowerCase().includes(query) || (sch.time || "").toLowerCase().includes(query));
+        }
+
+        if(currentViewMode === 'list') renderDailyTasks(filteredData);
+        else renderTimeBlocks(filteredData);
+    }
+
+    if (searchInput) {
+        let timeout = null;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => { searchHandler(); }, 300); 
+        });
+    }
 
     const toastContainer = document.getElementById('toast-container');
     function showToast(message, type = 'success') {
@@ -426,5 +417,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.showToast = showToast;
 
-    fetchAndRenderSchedules();
+    fetchAndRenderTasks();
 });

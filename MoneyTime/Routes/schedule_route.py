@@ -146,13 +146,14 @@ def add_rutinitas():
     return jsonify({"success": False, "message": "Gagal menambahkan rutinitas"}), 500
 
 # Get Rutinitas Route
-@schedule.route('/rutinitas/<int:user_id>', methods=['GET'])
-def get_rutinitas(user_id):
+@schedule.route('/api/rutinitas', methods=['GET'])
+def get_rutinitas():
 
     # Auth Check
     if 'user' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
         
+    user_id = session['user'].get('id')
     hari = request.args.get('hari')
     rutinitas = rutinitas_controller.get_rutinitas(user_id, hari)
     
