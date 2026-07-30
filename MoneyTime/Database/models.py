@@ -48,6 +48,7 @@ class Rutinitas(db.Model):
     waktu = db.Column(db.Text)       
     prioritas = db.Column(db.Text)   
     status = db.Column(db.Text, default="To Do") 
+    description = db.Column(db.Text)
     
     # Relation
     user = db.relationship("User", back_populates="rutinitas")

@@ -1,5 +1,5 @@
 // Variabel State Global
-let currentViewMode = 'list'; 
+let currentViewMode = 'block'; 
 // State untuk Drag & Drop
 let draggedTaskId = null;
 let dragOffsetY = 0;
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 3. CORE VARIABLES & TABS
     // ==========================================
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     let currentFilter = days[new Date().getDay()]; 
     let allSchedules = [];     
     const searchInput = document.getElementById('searchInput'); 
@@ -110,8 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 // Fallback Mock Data
                 allSchedules = [
-                    { id: 1, title: 'Wake Up', hari: 'Monday', time: '03.00 - 04.00', priority: 'High', status: 'To Do' },
-                    { id: 2, title: 'Project Moneytime', hari: 'Monday', time: '04.00 - 05.00', priority: 'Medium', status: 'To Do' }
+                    { id: 1, title: 'Wake Up', hari: 'Senin', time: '03.00 - 04.00', priority: 'High', status: 'To Do' },
+                    { id: 2, title: 'Project Moneytime', hari: 'Senin', time: '04.00 - 05.00', priority: 'Medium', status: 'To Do' }
                 ];
             } else {
                 const data = await response.json();
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const prioText = task.priority || "Medium";
         const prioClass = `prio-${prioText.toLowerCase()}`;
-        const dayBadgeColor = getCategoryColor(task.hari || "Monday");
+        const dayBadgeColor = getCategoryColor(task.hari || "Senin");
         const onClickAttribute = `onclick="toggleStatus(event, ${task.id}, '${task.status}')"`;
         const itemData = JSON.stringify(task).replace(/"/g, '&quot;');
 
@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dayCol = document.querySelector(`.tb-day-col[data-day="${task.hari}"]`);
             if(!dayCol) return;
 
-            let prioClass = `prio-${(task.priority || 'medium').toLowerCase()}`;
+            let prioClass = `prio-${(task.priority || 'none').toLowerCase()}`;
             let statusClass = (task.status === 'Completed' || task.status === 'Done') ? 'status-done' : '';
 
             const blockHTML = `

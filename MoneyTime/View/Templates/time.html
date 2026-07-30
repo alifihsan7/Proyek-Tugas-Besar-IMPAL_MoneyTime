@@ -154,21 +154,21 @@
                 <span class="toolbar-label">Routine</span>
             </div>
 
-            <!-- Tab Hari (Muncul di mode List) -->
-            <div class="time-tabs-container" id="list-tabs">
-                <div class="time-tab active" data-target="Monday">Monday</div>
-                <div class="time-tab" data-target="Tuesday">Tuesday</div>
-                <div class="time-tab" data-target="Wednesday">Wednesday</div>
-                <div class="time-tab" data-target="Thursday">Thursday</div>
-                <div class="time-tab" data-target="Friday">Friday</div>
-                <div class="time-tab" data-target="Saturday">Saturday</div>
-                <div class="time-tab" data-target="Sunday">Sunday</div>
+            <!-- Tab Hari (Muncul di mode List, disembunyikan default karena mode awal Block/Calendar) -->
+            <div class="time-tabs-container" id="list-tabs" style="display: none;">
+                <div class="time-tab active" data-target="Senin">Senin</div>
+                <div class="time-tab" data-target="Selasa">Selasa</div>
+                <div class="time-tab" data-target="Rabu">Rabu</div>
+                <div class="time-tab" data-target="Kamis">Kamis</div>
+                <div class="time-tab" data-target="Jumat">Jumat</div>
+                <div class="time-tab" data-target="Sabtu">Sabtu</div>
+                <div class="time-tab" data-target="Minggu">Minggu</div>
             </div>
 
             <div class="toolbar-right" style="display: flex; gap: 10px;">
                 <!-- Tombol Toggle View (Grid vs List) -->
                 <button class="view-toggle-btn" id="toggleViewBtn" title="Switch View">
-                    <i class="fa-solid fa-calendar-week"></i>
+                    <i class="fa-solid fa-list"></i>
                 </button>
                 <button class="add-btn" id="addScheduleBtn">
                     <i class="fa-solid fa-plus"></i> Add Task
@@ -180,7 +180,7 @@
         <div class="schedule-list-section">
             
             <!-- 1. LIST VIEW (GRID ALIGNMENT) -->
-            <div class="day-card" id="view-list">
+            <div class="day-card" id="view-list" style="display: none;">
                 <div class="daily-task-header">
                     <div class="col-task">Task</div>
                     <div class="col-day">Day</div>
@@ -193,30 +193,30 @@
             </div>
 
             <!-- 2. TIME BLOCK CALENDAR VIEW -->
-            <div class="day-card" id="view-block" style="display: none; padding: 0; overflow: hidden;">
+            <div class="day-card" id="view-block" style="padding: 0; overflow: hidden;">
                 <div class="time-block-wrapper">
                     <!-- Header Kolom Hari -->
                     <div class="tb-header">
                         <div class="tb-time-col-header">GMT+7</div>
-                        <div class="tb-day-header">Mon</div>
-                        <div class="tb-day-header">Tue</div>
-                        <div class="tb-day-header">Wed</div>
-                        <div class="tb-day-header">Thu</div>
-                        <div class="tb-day-header">Fri</div>
-                        <div class="tb-day-header">Sat</div>
-                        <div class="tb-day-header">Sun</div>
+                        <div class="tb-day-header">Senin</div>
+                        <div class="tb-day-header">Selasa</div>
+                        <div class="tb-day-header">Rabu</div>
+                        <div class="tb-day-header">Kamis</div>
+                        <div class="tb-day-header">Jumat</div>
+                        <div class="tb-day-header">Sabtu</div>
+                        <div class="tb-day-header">Minggu</div>
                     </div>
                     
                     <!-- Area Grid Jadwal (24 Jam, per 30 Menit) -->
                     <div class="tb-body" id="time-block-grid">
                         <div class="tb-time-labels" id="tb-time-labels"></div>
-                        <div class="tb-day-col" data-day="Monday"></div>
-                        <div class="tb-day-col" data-day="Tuesday"></div>
-                        <div class="tb-day-col" data-day="Wednesday"></div>
-                        <div class="tb-day-col" data-day="Thursday"></div>
-                        <div class="tb-day-col" data-day="Friday"></div>
-                        <div class="tb-day-col" data-day="Saturday"></div>
-                        <div class="tb-day-col" data-day="Sunday"></div>
+                        <div class="tb-day-col" data-day="Senin"></div>
+                        <div class="tb-day-col" data-day="Selasa"></div>
+                        <div class="tb-day-col" data-day="Rabu"></div>
+                        <div class="tb-day-col" data-day="Kamis"></div>
+                        <div class="tb-day-col" data-day="Jumat"></div>
+                        <div class="tb-day-col" data-day="Sabtu"></div>
+                        <div class="tb-day-col" data-day="Minggu"></div>
                     </div>
                 </div>
             </div>
@@ -274,7 +274,14 @@
         </div>
     </div>
 
+    <!-- Script utama Time -->
     <script src="{{ url_for('static', filename='scriptTime.js') }}"></script>
+    
+    <!-- TAMBAHKAN KETIGA SCRIPT INI DI SINI -->
+    <script src="{{ url_for('static', filename='scriptScheduleAdd.js') }}"></script>
+    <script src="{{ url_for('static', filename='scriptScheduleDetail.js') }}"></script>
+    <script src="{{ url_for('static', filename='scriptScheduleEdit.js') }}"></script>
+
     {% include 'assistant.html' %}
     <script src="{{ url_for('static', filename='scriptAssistant.js') }}"></script>
 </body>

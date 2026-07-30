@@ -143,10 +143,6 @@ body { min-height: 100vh; display: flex; flex-direction: column; padding: 0; mar
 .tb-task-block:hover { transform: scale(1.02); box-shadow: 0 4px 8px rgba(0,0,0,0.15); z-index: 5 !important; }
 .tb-task-title { font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tb-task-time { font-size: 10px; opacity: 0.8; }
-.tb-task-block.prio-high { background-color: #ffcccc; border-left-color: #D32F2F; }
-.tb-task-block.prio-medium { background-color: #ffe6cc; border-left-color: #F57C00; }
-.tb-task-block.prio-low { background-color: #cce5ff; border-left-color: #1976D2; }
-.tb-task-block.status-done { opacity: 0.6; text-decoration: line-through; }
 
 /* Highlight saat kolom ditarik di atasnya */
 .tb-day-col.drag-over {
@@ -156,4 +152,38 @@ body { min-height: 100vh; display: flex; flex-direction: column; padding: 0; mar
 
 .tb-task-block.dragging {
     opacity: 0.5;
+}
+
+.tb-task-block.status-done { opacity: 0.6; text-decoration: line-through; }
+
+/* --- WARNA BLOK KALENDER BERDASARKAN PRIORITAS --- */
+.tb-task-block.prio-none { 
+    background-color: #f1f3f5; 
+    border-left-color: #adb5bd; 
+    color: #333; 
+}
+
+.tb-task-block.prio-low { 
+    background-color: #d3f9d8; 
+    border-left-color: #40c057; 
+    color: #000; 
+}
+
+.tb-task-block.prio-medium { 
+    background-color: #fff3bf; 
+    border-left-color: #fcc419; 
+    color: #000; 
+}
+
+.tb-task-block.prio-high { 
+    background-color: #ffe3e3; 
+    border-left-color: #fa5252; 
+    color: #000; 
+}
+
+.tb-task-block.prio-critical { 
+    background-color: #ffc9c9; 
+    border-left-color: #e03131; 
+    color: #000; 
+    font-weight: bold; 
 }
