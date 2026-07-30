@@ -108,11 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/rutinitas'); 
             
             if (!response.ok) {
-                // Fallback Mock Data
-                allSchedules = [
-                    { id: 1, title: 'Wake Up', hari: 'Senin', time: '03.00 - 04.00', priority: 'High', status: 'To Do' },
-                    { id: 2, title: 'Project Moneytime', hari: 'Senin', time: '04.00 - 05.00', priority: 'Medium', status: 'To Do' }
-                ];
+                allSchedules = [];
             } else {
                 const data = await response.json();
                 if (data.success) allSchedules = data.data; 
@@ -179,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    // --- B. Logika Time Range & Drag Drop ---
+    // --- B. Logika Time Range, Drag Drop, & Resize ---
     function parseTimeRange(timeStr) {
         try {
             const parts = timeStr.split('-');
@@ -194,6 +190,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return { startMins: startTotalMins, duration: endTotalMins - startTotalMins };
         } catch (e) { return null; }
     }
+
+    // FIX: Format Waktu Wajib Menggunakan Titik Dua (:)
+    const formatTime = (mins) => {
+        let h = Math.floor(mins / 60) % 24;
+        let m = mins % 60;
+        return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+    };
 
     function renderTimeBlocks(tasks) {
         document.querySelectorAll('.tb-day-col').forEach(col => col.innerHTML = '');
@@ -215,11 +218,13 @@ document.addEventListener('DOMContentLoaded', () => {
                      style="top: ${timeData.startMins}px; height: ${timeData.duration}px;">
                     <div class="tb-task-title" title="${task.title}">${task.title}</div>
                     <div class="tb-task-time">${task.time}</div>
+                    <div class="tb-resizer"></div> 
                 </div>
             `;
             dayCol.insertAdjacentHTML('beforeend', blockHTML);
         });
 
+        // 1. Inisialisasi Drag (Pindah Kotak)
         document.querySelectorAll('.tb-task-block').forEach(block => {
             block.addEventListener('dragstart', (e) => {
                 isDragging = true;
@@ -241,8 +246,95 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(task) toggleStatus(e, task.id, task.status);
             });
         });
+
+        // 2. Inisialisasi Resize (Durasi Kotak)
+        document.querySelectorAll('.tb-resizer').forEach(resizer => {
+            resizer.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); 
+                
+                const block = e.target.parentElement;
+                block.setAttribute('draggable', 'false'); 
+                
+                let startY = e.clientY;
+                let startHeight = parseInt(block.style.height, 10);
+                
+                const onMouseMove = (moveEvent) => {
+                    const newHeight = startHeight + (moveEvent.clientY - startY);
+                    if (newHeight >= 30) { 
+                        block.style.height = newHeight + 'px';
+                    }
+                };
+                
+                const onMouseUp = async () => {
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
+                    
+                    block.setAttribute('draggable', 'true'); 
+                    
+                    let finalHeight = parseInt(block.style.height, 10);
+                    finalHeight = Math.round(finalHeight / 30) * 30;
+                    if (finalHeight < 30) finalHeight = 30;
+                    
+                    const taskId = parseInt(block.dataset.id);
+                    const task = allSchedules.find(t => t.id === taskId);
+                    if (!task) {
+                        searchHandler();
+                        return;
+                    }
+
+                    const tData = parseTimeRange(task.time);
+                    const newStartMins = tData.startMins;
+                    const newEndMins = newStartMins + finalHeight;
+
+                    // Deteksi Bentrok
+                    const hasCollision = allSchedules.some(t => {
+                        if (t.id === taskId || t.hari !== task.hari) return false;
+                        const oRange = parseTimeRange(t.time);
+                        if (!oRange) return false;
+                        return newStartMins < (oRange.startMins + oRange.duration) && newEndMins > oRange.startMins;
+                    });
+
+                    if (hasCollision) {
+                        showToast("Gagal memperbarui durasi! Waktu bertabrakan dengan rutinitas lain.", "error");
+                        searchHandler(); 
+                        return;
+                    }
+
+                    block.style.height = finalHeight + 'px';
+                    const oldTime = task.time;
+                    task.time = `${formatTime(newStartMins)} - ${formatTime(newEndMins)}`;
+                    block.querySelector('.tb-task-time').textContent = task.time;
+
+                    try {
+                        // FIX: Menghapus /api dari endpoint URL 
+                        const response = await fetch(`/rutinitas/${task.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                nama_task: task.title, 
+                                hari: task.hari, 
+                                waktu: task.time, 
+                                prioritas: task.priority 
+                            })
+                        });
+                        const res = await response.json();
+                        if (!res.success) throw new Error();
+                        showToast("Durasi rutinitas diperbarui!", "success");
+                    } catch (err) {
+                        task.time = oldTime; // Revert if fails
+                        searchHandler();
+                        showToast("Gagal memperbarui durasi jadwal.", "error");
+                    }
+                };
+                
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+            });
+        });
     }
 
+    // Event Drop Area
     document.querySelectorAll('.tb-day-col').forEach(col => {
         col.addEventListener('dragover', (e) => {
             e.preventDefault(); 
@@ -276,33 +368,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- SISTEM DETEKSI BENTROK FRONTEND ---
         const hasCollision = allSchedules.some(t => {
-            // Abaikan diri sendiri atau hari yang berbeda
             if (t.id === draggedTaskId || t.hari !== newDay) return false;
-            
             const tRange = parseTimeRange(t.time);
             if (!tRange) return false;
-            
             const tStart = tRange.startMins;
             const tEnd = tStart + tRange.duration;
-            
-            // Logika Tabrakan
             return newStartMins < tEnd && newEndMins > tStart;
         });
 
         if (hasCollision) {
-            showToast("Gagal dipindahkan! Jadwal bertabrakan dengan rutinitas lain.", "error");
-            searchHandler(); // Revert posisi
-            return; // Hentikan proses, jangan panggil API
+            showToast("Gagal dipindahkan! Jadwal bertabrakan.", "error");
+            searchHandler(); 
+            return;
         }
-        // ----------------------------------------
 
-        const formatTime = (mins) => {
-            let h = Math.floor(mins / 60) % 24;
-            let m = mins % 60;
-            return `${h.toString().padStart(2,'0')}.${m.toString().padStart(2,'0')}`;
-        };
         const newTimeStr = `${formatTime(newStartMins)} - ${formatTime(newEndMins)}`;
-
         const oldDay = task.hari;
         const oldTime = task.time;
         
@@ -312,7 +392,8 @@ document.addEventListener('DOMContentLoaded', () => {
         searchHandler(); // Render UI Instan
 
         try {
-            const response = await fetch(`/api/rutinitas/${task.id}`, {
+            // FIX: Menghapus /api dari endpoint URL 
+            const response = await fetch(`/rutinitas/${task.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -358,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSummaryCards(allSchedules);
 
             try {
+                // Route PATCH status tetap menggunakan /api berdasarkan backend Anda
                 const response = await fetch(`/api/rutinitas/${id}/status`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
