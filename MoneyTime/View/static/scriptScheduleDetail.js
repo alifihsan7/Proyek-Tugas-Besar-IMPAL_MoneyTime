@@ -3,11 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const detailOverlay = document.getElementById('schedule-detail-modal-overlay');
     const closeBtn = document.getElementById('closeSchDetailModalIcon');
     const deleteBtn = document.getElementById('schDetailDeleteBtn');
-    const editBtn = document.getElementById('schDetailEditBtn'); 
-
-    // Modals
-    const globalDeleteOverlay = document.getElementById('delete-modal-overlay');
-    const globalDeleteModal = document.getElementById('delete-item-modal');
 
     // --- CLOSE DETAIL ---
     function closeDetail() {
@@ -22,49 +17,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DELETE LOGIC ---
     if (deleteBtn) {
-        deleteBtn.addEventListener('click', () => {
-            if (globalDeleteOverlay) {
-                globalDeleteOverlay.style.display = 'flex';
-                setTimeout(() => { if (globalDeleteModal) globalDeleteModal.classList.add('show'); }, 10);
+        deleteBtn.addEventListener('click', async () => {
+            const schId = window.currentScheduleDetail ? window.currentScheduleDetail.id : null;
+            if(!schId) return;
 
-                const yesBtn = document.getElementById('deleteYesBtn');
-                const newYesBtn = yesBtn.cloneNode(true);
-                yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
+            // Memunculkan popup konfirmasi bawaan browser
+            const isConfirmed = confirm("Apakah Anda yakin ingin menghapus rutinitas ini?");
+            if (!isConfirmed) return; // Batalkan jika user memilih "No/Cancel"
 
-                newYesBtn.addEventListener('click', async () => {
-                    const schId = window.currentScheduleDetail ? window.currentScheduleDetail.id : null;
-                    if(!schId) return;
-
-                    try {
-                        const response = await fetch('/delete-schedule', {
-                            method: 'DELETE',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ id: schId })
-                        });
-
-                        const res = await response.json();
-                        if (res.success) {
-                            if (typeof showToast === 'function') showToast("Activity deleted", "success");
-                            globalDeleteModal.classList.remove('show');
-                            setTimeout(() => {
-                                globalDeleteOverlay.style.display = 'none';
-                                closeDetail(); // TUTUP MODAL
-                                // REFRESH OTOMATIS
-                                if (typeof window.fetchSchedules === 'function') window.fetchSchedules();
-                            }, 300);
-                        } else {
-                            if (typeof showToast === 'function') showToast("Failed to delete", "error");
-                        }
-                    } catch(e) { console.error(e); }
+            try {
+                // Eksekusi API Delete
+                const response = await fetch(`/rutinitas/${schId}`, {
+                    method: 'DELETE',
+                    headers: {'Content-Type': 'application/json'}
                 });
 
-                const noBtn = document.getElementById('deleteNoBtn');
-                const newNoBtn = noBtn.cloneNode(true);
-                noBtn.parentNode.replaceChild(newNoBtn, noBtn);
-                newNoBtn.addEventListener('click', () => {
-                    globalDeleteModal.classList.remove('show');
-                    setTimeout(() => globalDeleteOverlay.style.display = 'none', 300);
-                });
+                const res = await response.json();
+                if (res.success) {
+                    if (typeof showToast === 'function') showToast("Rutinitas berhasil dihapus", "success");
+                    closeDetail(); // Tutup modal detail
+                    
+                    // Refresh data di kalender secara otomatis
+                    if (typeof window.fetchSchedules === 'function') window.fetchSchedules();
+                } else {
+                    if (typeof showToast === 'function') showToast("Gagal menghapus rutinitas", "error");
+                    else alert("Gagal menghapus rutinitas");
+                }
+            } catch(e) { 
+                console.error(e); 
+                alert("Terjadi kesalahan pada server saat menghapus.");
             }
         });
     }
@@ -77,40 +58,41 @@ function openScheduleDetail(data) {
 
     window.currentScheduleDetail = data;
 
-    function formatFullDate(dateInput) {
-        if (!dateInput) return '-';
-        let dateObj = new Date(dateInput);
-        if (isNaN(dateObj.getTime())) return dateInput;
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        return `${days[dateObj.getDay()]}, ${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
-    }
-
     // Populate Fields
     const titleEl = document.getElementById('schDetailTitle'); 
     const descEl = document.getElementById('schDetailDescription'); 
+    const hariEl = document.getElementById('schDetailHari');
+    const startEl = document.getElementById('schDetailStartTime');
+    const endEl = document.getElementById('schDetailEndTime');
     
     if(titleEl) titleEl.value = data.title || '-'; 
     if(descEl) descEl.value = data.description || ''; 
-    
-    document.getElementById('schDetailTime').value = data.time || '-';
-    document.getElementById('schDetailDate').value = formatFullDate(data.date);
-    document.getElementById('schDetailCategory').value = data.category || '-';
+    if(hariEl) hariEl.value = data.hari || '-';
+
+    // Memecah "04:00 - 05:00" menjadi Start & End Time
+    if (data.time && data.time.includes('-')) {
+        const timeParts = data.time.split('-');
+        if(startEl) startEl.value = timeParts[0].trim();
+        if(endEl) endEl.value = timeParts[1].trim();
+    } else {
+        if(startEl) startEl.value = data.time || '-';
+        if(endEl) endEl.value = '-';
+    }
 
     // Priority Styling
     const prioContainer = document.getElementById('schDetailPriorityContainer');
-    const options = prioContainer.querySelectorAll('.priority-option');
-    options.forEach(opt => opt.classList.remove('active'));
+    if(prioContainer) {
+        const options = prioContainer.querySelectorAll('.priority-option');
+        options.forEach(opt => opt.classList.remove('active'));
 
-    const targetPrio = (data.priority || 'None').toLowerCase();
-    const matchingOption = prioContainer.querySelector(`.priority-option.${targetPrio}`);
-    if (matchingOption) matchingOption.classList.add('active');
+        const targetPrio = (data.priority || 'None').toLowerCase();
+        const matchingOption = prioContainer.querySelector(`.priority-option.${targetPrio}`);
+        if (matchingOption) matchingOption.classList.add('active');
+    }
     
-    // --- SHOW EDIT BUTTON FOR ALL (INCLUDING OVERDUE & COMPLETED) ---
+    // Tampilkan tombol Edit
     const editBtn = document.getElementById('schDetailEditBtn');
-
     if (editBtn) {
-    // Selalu tampilkan tombol edit agar status Completed & Overdue bisa diedit
         editBtn.style.display = 'flex'; 
     }
 

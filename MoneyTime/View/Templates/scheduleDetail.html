@@ -1,7 +1,7 @@
 <div class="detail-modal-card">
 
     <div class="detail-header">
-        <b class="detail-title">Schedule Detail</b>
+        <b class="detail-title">Routine Detail</b>
         <div class="detail-header-icons">
             <div class="detail-icon-btn" id="schDetailEditBtn">
                 <i class="fa-regular fa-pen-to-square" style="color: #2563EB;"></i>
@@ -13,6 +13,7 @@
     </div>
 
     <div class="detail-form-content" style="margin-top: 20px;">
+        <!-- Row 1: Activity & Hari -->
         <div class="detail-form-row">
             <div class="detail-form-group">
                 <label class="detail-label">Activity Name</label>
@@ -22,31 +23,33 @@
             </div>
 
             <div class="detail-form-group">
-                <label class="detail-label">Time</label>
+                <label class="detail-label">Hari</label>
                 <div class="detail-input-box">
-                    <input type="text" class="detail-input-text" id="schDetailTime" readonly>
+                    <input type="text" class="detail-input-text" id="schDetailHari" readonly>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Start Time & End Time -->
+        <div class="detail-form-row">
+            <div class="detail-form-group">
+                <label class="detail-label">Start Time</label>
+                <div class="detail-input-box">
+                    <input type="text" class="detail-input-text" id="schDetailStartTime" readonly>
+                    <i class="fa-regular fa-clock detail-calendar-icon" style="font-size: 18px;"></i>
+                </div>
+            </div>
+
+            <div class="detail-form-group">
+                <label class="detail-label">End Time</label>
+                <div class="detail-input-box">
+                    <input type="text" class="detail-input-text" id="schDetailEndTime" readonly>
                     <i class="fa-regular fa-clock detail-calendar-icon" style="font-size: 18px;"></i>
                 </div>
             </div>
         </div>
 
-        <div class="detail-form-row">
-            <div class="detail-form-group">
-                <label class="detail-label">Date</label>
-                <div class="detail-input-box detail-date-box">
-                    <input type="text" class="detail-input-text" id="schDetailDate" readonly>
-                    <i class="fa-solid fa-calendar-days detail-calendar-icon"></i>
-                </div>
-            </div>
-
-            <div class="detail-form-group">
-                <label class="detail-label">Category</label>
-                <div class="detail-input-box">
-                    <input type="text" class="detail-input-text" id="schDetailCategory" readonly>
-                </div>
-            </div>
-        </div>
-
+        <!-- Row 3: Priority -->
         <div class="detail-form-row" style="grid-template-columns: 1fr;">
             <div class="detail-form-group">
                 <label class="detail-label">Priority</label>
@@ -61,6 +64,7 @@
             </div>
         </div>
 
+        <!-- Row 4: Description -->
         <div class="detail-form-row" style="grid-template-columns: 1fr;">
             <div class="detail-form-group" style="align-items: flex-start;">
                 <label class="detail-label" style="margin-top: 10px;">Description</label>
