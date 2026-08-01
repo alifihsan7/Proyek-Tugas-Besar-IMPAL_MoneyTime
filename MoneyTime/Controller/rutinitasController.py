@@ -1,6 +1,5 @@
 from Database.models import Rutinitas
 from Database.orm import db
-from Utils.cache import cache
 from Schema.schema import RutinitasSchema
 from marshmallow import ValidationError
 from typing import List, Dict, Any
@@ -10,7 +9,7 @@ class RutinitasController:
         self.db = db.session
         self.rutinitas_schema = RutinitasSchema()
 
-    # --- FUNGSI CEK BENTROK JADWAL ---
+    # Cek jadwal bentrok
     def _cek_bentrok(self, user_id: int, hari: str, waktu: str, exclude_id: int = None) -> bool:
         try:
             parts = waktu.split('-')
@@ -44,9 +43,8 @@ class RutinitasController:
                 task_end = (te_h * 60) + te_m
                 if task_end < task_start: task_end += (24 * 60)
 
-                # Logika overlap: Start A < End B DAN End A > Start B
                 if new_start < task_end and new_end > task_start:
-                    return True # Ada bentrok!
+                    return True 
                     
             return False
         except Exception as e:
@@ -56,7 +54,6 @@ class RutinitasController:
     # Tambah Rutinitas 
     def add_rutinitas(self, user_id: int, nama_task: str, hari: str, waktu: str, prioritas: str) -> bool:
         try:
-            # Cek Bentrok sebelum dimasukkan
             if self._cek_bentrok(user_id, hari, waktu):
                 print("Validasi Gagal: Jadwal bertabrakan dengan rutinitas lain.")
                 return False
@@ -72,20 +69,20 @@ class RutinitasController:
             
             self.db.add(new_rutinitas)
             self.db.commit()
-            cache.delete_memoized(self.get_rutinitas, user_id)
+            
             return True
             
         except ValidationError as error:
             self.db.rollback()
             print(f"Validasi Schema Gagal (Add Rutinitas): {error.messages}")
             return False
+        
         except Exception as error:
             self.db.rollback()
             print(f"Error add rutinitas: {error}")
             return False
 
     # Ambil Rutinitas 
-    @cache.memoize(timeout=300)
     def get_rutinitas(self, user_id: int, hari: str = None) -> List[Dict[str, Any]]:
         try:
             query = self.db.query(Rutinitas).filter_by(userid=user_id)
@@ -124,9 +121,10 @@ class RutinitasController:
                 rutinitas.status = status
                 user_id = rutinitas.userid
                 self.db.commit()
-                cache.delete_memoized(self.get_rutinitas, user_id)
                 return True
+            
             return False
+        
         except Exception as error:
             self.db.rollback()
             return False
@@ -156,9 +154,8 @@ class RutinitasController:
                 
                 user_id = rutinitas.userid
                 self.db.commit()
-
-                cache.delete_memoized(self.get_rutinitas, user_id)
                 return True
+            
             return False
             
         except Exception as error:
@@ -173,9 +170,10 @@ class RutinitasController:
                 user_id = rutinitas.userid
                 self.db.delete(rutinitas)
                 self.db.commit()
-                cache.delete_memoized(self.get_rutinitas, user_id)
                 return True
+            
             return False
+        
         except Exception as error:
             self.db.rollback()
             return False
@@ -185,8 +183,9 @@ class RutinitasController:
         try:
             self.db.query(Rutinitas).filter_by(userid=user_id).update({"status": "To Do"})
             self.db.commit()
-            cache.delete_memoized(self.get_rutinitas, user_id)
+            
             return True
+        
         except Exception as error:
             self.db.rollback()
             return False
