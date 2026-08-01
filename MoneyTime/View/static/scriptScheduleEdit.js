@@ -2,625 +2,283 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================
     // 1. ELEMEN UTAMA & VARIABEL
     // ============================================
+    // Kita panggil overlay terluar (yang ada di time.html)
     const editOverlay = document.getElementById('edit-schedule-modal-overlay');
-    const detailOverlay = document.getElementById('schedule-detail-modal-overlay');
-
     const closeBtn = document.getElementById('closeEditSchModalIcon');
     const cancelBtn = document.getElementById('editSchCancelBtn');
     const confirmBtn = document.getElementById('editSchConfirmBtn');
 
     // Inputs Form
-    const titleInput = document.getElementById('editSchTitle'); 
-    const descriptionInput = document.getElementById('editSchDescription');
-    const timeDisplay = document.getElementById('editSchTimeDisplay');
-    const timeHidden = document.getElementById('editSchTime');
-    const dateDisplayInput = document.getElementById('editSchDateDisplay');
-    const dateHiddenInput = document.getElementById('editSchDate');
+    const titleInput = document.getElementById('editSchTitle');
+    const hariInput = document.getElementById('editSchHariInput');
+    const startTimeInput = document.getElementById('editSchStartTimeInput');
+    const endTimeInput = document.getElementById('editSchEndTimeInput');
     const priorityHidden = document.getElementById('editSchPriority');
+    const descriptionInput = document.getElementById('editSchDescription');
 
-    // Category Elements
-    const categoryInput = document.getElementById('editSchCategoryInput');
-    const catDropdown = document.getElementById('editSchCategoryDropdown');
-    const catList = catDropdown ? catDropdown.querySelector('.schedule-dropdown-list') : null;
-    const catAddBtn = document.getElementById('editSchAddCategoryBtn');
+    const priorityOptions = document.querySelectorAll('#editSchPrioritySelector .priority-option');
 
-    // Time Picker Elements (Edit)
-    const timePopup = document.getElementById('editSchTimePopup');
-    const editSchHourInput = document.getElementById('editSchHourInput');
-    const editSchMinuteInput = document.getElementById('editSchMinuteInput');
-    const editSchHourScroll = document.getElementById('editSchHourScrollView');
-    const editSchMinuteScroll = document.getElementById('editSchMinuteScrollView');
-    
-    // Tombol Navigasi Time
-    const btnHourUp = document.getElementById('editSchHourUp');
-    const btnHourDown = document.getElementById('editSchHourDown');
-    const btnMinUp = document.getElementById('editSchMinuteUp');
-    const btnMinDown = document.getElementById('editSchMinuteDown');
-
-    // Elemen Prev/Next Time
-    const elHourPrev = document.getElementById('editSchHourPrev');
-    const elHourNext = document.getElementById('editSchHourNext');
-    const elMinPrev = document.getElementById('editSchMinutePrev');
-    const elMinNext = document.getElementById('editSchMinuteNext');
-
-    // State Data
-    let initialEditData = {}; 
-    let scheduleCategories = []; 
-    let editHour = 12, editMinute = 0;
-
-    // Helper Functions
-    function fmt(n) { return n.toString().padStart(2, '0'); }
-    function formatFullDate(dateObj) {
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        return `${days[dateObj.getDay()]}, ${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
-    }
+    let initialEditData = {};
 
     // ============================================
-    // 2. LOGIKA KATEGORI (FETCH + COLOR)
+    // 2. GENERATE OPTIONS DROPDOWN
     // ============================================
-    async function fetchCategories() {
-        try {
-            const response = await fetch('/api/schedule-categories');
-            const data = await response.json();
-            if (data.success) {
-                scheduleCategories = data.categories;
-                renderCategoryList("");
-            }
-        } catch (error) {
-            console.error("Gagal mengambil kategori:", error);
-            scheduleCategories = []; 
+    const hariOptions = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    const timeOptions = [];
+    for(let h = 0; h < 24; h++) {
+        for(let m = 0; m < 60; m += 30) {
+            timeOptions.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
         }
     }
 
-    function renderCategoryList(filterText = "") {
-        if (!catList) return;
-        Array.from(catList.querySelectorAll('.schedule-dropdown-item')).forEach(el => el.remove());
+    function setupDropdown(inputId, dropdownId, listId, options) {
+        const input = document.getElementById(inputId);
+        const dropdown = document.getElementById(dropdownId);
+        const list = document.getElementById(listId);
+        
+        if(!input || !dropdown || !list) return;
 
-        const filtered = scheduleCategories.filter(c => c.toLowerCase().includes(filterText.toLowerCase()));
-        let hasExactMatch = false;
-
-        filtered.forEach(cat => {
-            if (cat.toLowerCase() === filterText.toLowerCase()) hasExactMatch = true;
-            
+        list.innerHTML = '';
+        options.forEach(opt => {
             const item = document.createElement('div');
             item.className = 'schedule-dropdown-item';
-            item.textContent = cat;
+            item.textContent = opt;
             
-            // Tampilan Polos (Putih)
-            item.style.backgroundColor = '#ffffff';
-            item.style.color = '#333333';
-            item.style.fontWeight = '500';
-            item.style.marginBottom = '4px';
-            item.style.borderRadius = '6px';
-
-            item.onclick = (e) => {
+            // Styling standar
+            item.style.padding = '10px 16px';
+            item.style.cursor = 'pointer';
+            item.style.color = '#333';
+            item.style.transition = 'background 0.2s';
+            
+            // Event Click Item
+            item.addEventListener('click', (e) => {
                 e.stopPropagation();
-                categoryInput.value = cat;
-                catDropdown.classList.remove('active');
-                if (catAddBtn) catAddBtn.style.display = 'none';
-            };
-            if (catAddBtn) catList.insertBefore(item, catAddBtn);
-            else catList.appendChild(item);
+                input.value = opt;
+                dropdown.classList.remove('active');
+            });
+
+            // Hover effects
+            item.addEventListener('mouseenter', () => item.style.backgroundColor = '#f2f2f2');
+            item.addEventListener('mouseleave', () => item.style.backgroundColor = 'transparent');
+            
+            list.appendChild(item);
         });
 
-        if (catAddBtn) {
-            if (filterText && !hasExactMatch) {
-                catAddBtn.style.display = 'block';
-                catAddBtn.textContent = `Add "${filterText}"`;
-                catAddBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    categoryInput.value = filterText;
-                    catDropdown.classList.remove('active');
-                    catAddBtn.style.display = 'none';
-                };
-            } else {
-                catAddBtn.style.display = 'none';
-            }
+        // Event Toggle Dropdown
+        input.parentElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Tutup dropdown lain yang sedang terbuka
+            document.querySelectorAll('#edit-schedule-modal-overlay .schedule-custom-dropdown').forEach(d => {
+                if(d !== dropdown) d.classList.remove('active');
+            });
+            dropdown.classList.toggle('active');
+        });
+    }
+
+    // Inisialisasi Dropdowns
+    setupDropdown('editSchHariInput', 'editSchHariDropdown', 'editSchHariList', hariOptions);
+    setupDropdown('editSchStartTimeInput', 'editSchStartTimeDropdown', 'editSchStartTimeList', timeOptions);
+    setupDropdown('editSchEndTimeInput', 'editSchEndTimeDropdown', 'editSchEndTimeList', timeOptions);
+
+    // Menutup dropdown jika user klik di luar area
+    document.addEventListener('click', () => {
+        document.querySelectorAll('#edit-schedule-modal-overlay .schedule-custom-dropdown').forEach(d => {
+            d.classList.remove('active');
+        });
+    });
+
+    // ============================================
+    // 3. PRIORITY SELECTOR LISTENER
+    // ============================================
+    priorityOptions.forEach(opt => {
+        opt.addEventListener('click', () => {
+            priorityOptions.forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            priorityHidden.value = opt.dataset.value;
+        });
+    });
+
+    // ============================================
+    // 4. FUNGSI BUKA MODAL (GLOBAL)
+    // ============================================
+    window.openEditScheduleModal = function(data) {
+        if(!editOverlay) {
+            console.error("Overlay Edit Modal (#edit-schedule-modal-overlay) tidak ditemukan di HTML!");
+            return;
         }
-    }
 
-    if (categoryInput) {
-        categoryInput.addEventListener('click', (e) => {
-            e.stopPropagation();
-            catDropdown.classList.toggle('active');
-            renderCategoryList(categoryInput.value);
-        });
-        categoryInput.addEventListener('input', (e) => {
-            const val = e.target.value;
-            if (!catDropdown.classList.contains('active')) catDropdown.classList.add('active');
-            renderCategoryList(val);
-        });
-    }
-    document.addEventListener('click', (e) => {
-        if (catDropdown && !catDropdown.contains(e.target)) catDropdown.classList.remove('active');
-    });
+        if(!data) {
+            if (typeof showToast === 'function') showToast("Data jadwal gagal dimuat.", "error");
+            return;
+        }
 
-    // ============================================
-    // 3. TIME PICKER LOGIC (FULL FEATURE)
-    // ============================================
-    function updateEditTimeUI() {
-        // --- JAM ---
-        if (editHour > 23) editHour = 0;
-        if (editHour < 0) editHour = 23;
-
-        if (editSchHourInput) editSchHourInput.value = fmt(editHour);
-
-        let hPrev = editHour - 1; if (hPrev < 0) hPrev = 23;
-        let hNext = editHour + 1; if (hNext > 23) hNext = 0;
+        // 1. Set Teks Input
+        titleInput.value = data.title || data.nama_task || "";
+        hariInput.value = data.hari || "";
+        descriptionInput.value = data.description || "";
         
-        if(elHourPrev) elHourPrev.textContent = fmt(hPrev);
-        if(elHourNext) elHourNext.textContent = fmt(hNext);
-
-        // --- MENIT ---
-        if (editMinute > 59) editMinute = 0;
-        if (editMinute < 0) editMinute = 59;
-
-        if (editSchMinuteInput) editSchMinuteInput.value = fmt(editMinute);
-
-        let mPrev = editMinute - 1; if (mPrev < 0) mPrev = 59;
-        let mNext = editMinute + 1; if (mNext > 59) mNext = 0;
-
-        if(elMinPrev) elMinPrev.textContent = fmt(mPrev);
-        if(elMinNext) elMinNext.textContent = fmt(mNext);
-    }
-
-    // A. Tombol Panah
-    if(btnHourUp) btnHourUp.addEventListener('click', (e) => { e.stopPropagation(); editHour--; updateEditTimeUI(); });
-    if(btnHourDown) btnHourDown.addEventListener('click', (e) => { e.stopPropagation(); editHour++; updateEditTimeUI(); });
-    
-    if(btnMinUp) btnMinUp.addEventListener('click', (e) => { e.stopPropagation(); editMinute--; updateEditTimeUI(); });
-    if(btnMinDown) btnMinDown.addEventListener('click', (e) => { e.stopPropagation(); editMinute++; updateEditTimeUI(); });
-
-    // B. Input Manual
-    if(editSchHourInput) {
-        editSchHourInput.addEventListener('change', () => {
-            let val = parseInt(editSchHourInput.value);
-            if(isNaN(val)) val = 0;
-            editHour = val;
-            updateEditTimeUI();
-        });
-    }
-    if(editSchMinuteInput) {
-        editSchMinuteInput.addEventListener('change', () => {
-            let val = parseInt(editSchMinuteInput.value);
-            if(isNaN(val)) val = 0;
-            editMinute = val;
-            updateEditTimeUI();
-        });
-    }
-
-    // C. Scroll & Drag
-    function setupEditDragAndScroll(element, isHour) {
-        if (!element) return;
-        let isDragging = false;
-        let startY = 0;
-        
-        element.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            if (e.deltaY > 0) isHour ? editHour++ : editMinute++;
-            else isHour ? editHour-- : editMinute--;
-            updateEditTimeUI();
-        });
-
-        element.addEventListener('mousedown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
-            isDragging = true;
-            startY = e.clientY;
-            element.style.cursor = 'grabbing';
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            e.preventDefault();
-            const diffY = e.clientY - startY;
-            const threshold = 15;
-
-            if (diffY > threshold) {
-                isHour ? editHour++ : editMinute++;
-                updateEditTimeUI();
-                startY = e.clientY;
-            } else if (diffY < -threshold) {
-                isHour ? editHour-- : editMinute--;
-                updateEditTimeUI();
-                startY = e.clientY;
-            }
-        });
-
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-            if(element) element.style.cursor = 'grab';
-        });
-    }
-
-    setupEditDragAndScroll(editSchHourScroll, true);
-    setupEditDragAndScroll(editSchMinuteScroll, false);
-
-    // D. Open/Close Time Popup
-    if(timeDisplay) {
-        timeDisplay.addEventListener('click', (e) => {
-            e.stopPropagation();
-            updateEditTimeUI();
-            if(timePopup) timePopup.classList.add('active');
-            // Close date calendar if open
-            if(calPopup) closeCalendar();
-        });
-    }
-    document.getElementById('editSchTimeOkBtn')?.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        const finalTime = `${fmt(editHour)}:${fmt(editMinute)}`;
-        if(timeDisplay) timeDisplay.value = finalTime;
-        if(timeHidden) timeHidden.value = finalTime;
-        if(timePopup) timePopup.classList.remove('active');
-    });
-    document.getElementById('editSchTimeCancelBtn')?.addEventListener('click', (e)=>{
-        e.stopPropagation(); 
-        if(timePopup) timePopup.classList.remove('active');
-    });
-
-    // ============================================
-    // 4. DATE PICKER LOGIC (EDIT MODE)
-    // ============================================
-    const calPopup = document.getElementById('editSchCalendarPopup');
-    const datePickerWrapper = document.getElementById('editSchDatePickerWrapper');
-    
-    // Header & Views
-    const calMonthLabel = document.getElementById('editSchCalMonthLabel');
-    const calPrevBtn = document.getElementById('editSchCalPrevBtn');
-    const calNextBtn = document.getElementById('editSchCalNextBtn');
-    const viewDays = document.getElementById('editSchCalendarViewDays');
-    const viewMonths = document.getElementById('editSchCalendarViewMonths');
-    const calDaysGrid = document.getElementById('editSchCalDaysGrid');
-    const calMonthsGrid = document.getElementById('editSchCalMonthsGrid');
-
-    let schCalDate = new Date();
-    let selectedDate = null;
-    let currentView = 'days';
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const shortMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-    function updateCalHeader() {
-        if (!calMonthLabel) return;
-        const year = schCalDate.getFullYear();
-        const month = schCalDate.getMonth();
-
-        if (currentView === 'days') {
-            calMonthLabel.textContent = `${monthNames[month]} ${year}`;
-            if(viewDays) viewDays.style.display = 'block';
-            if(viewMonths) viewMonths.style.display = 'none';
+        // 2. Parsing Format Waktu ("10:00 - 11:30")
+        let timeStr = data.time || data.waktu || "";
+        if (timeStr && timeStr.includes('-')) {
+            const parts = timeStr.split('-');
+            startTimeInput.value = parts[0].trim();
+            endTimeInput.value = parts[1].trim();
         } else {
-            calMonthLabel.textContent = `${year}`;
-            if(viewDays) viewDays.style.display = 'none';
-            if(viewMonths) viewMonths.style.display = 'block';
-        }
-    }
-
-    function renderCalDays() {
-        if (!calDaysGrid) return;
-        calDaysGrid.innerHTML = '';
-
-        const year = schCalDate.getFullYear();
-        const month = schCalDate.getMonth();
-        const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const today = new Date();
-
-        for (let i = 0; i < firstDay; i++) {
-            const emptyDiv = document.createElement('div');
-            emptyDiv.className = 'sch-cal-day empty'; // Ensure style matches
-            emptyDiv.style.visibility = 'hidden';
-            calDaysGrid.appendChild(emptyDiv);
+            startTimeInput.value = "00:00";
+            endTimeInput.value = "00:30";
         }
 
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dayDiv = document.createElement('div');
-            dayDiv.className = 'schedule-calendar-day';
-            dayDiv.textContent = d;
-
-            // Styles
-            dayDiv.style.cursor = 'pointer';
-            dayDiv.style.textAlign = 'center';
-            dayDiv.style.padding = '5px';
-            dayDiv.style.borderRadius = '5px';
-
-            if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-                dayDiv.classList.add('today');
-                dayDiv.style.fontWeight = 'bold';
-                dayDiv.style.color = '#1a3e7f';
-            }
-
-            if (selectedDate &&
-                d === selectedDate.getDate() &&
-                month === selectedDate.getMonth() &&
-                year === selectedDate.getFullYear()) {
-                dayDiv.classList.add('active');
-                dayDiv.style.backgroundColor = '#1a3e7f';
-                dayDiv.style.color = '#fff';
-            }
-
-            dayDiv.onclick = (e) => {
-                e.stopPropagation();
-                selectedDate = new Date(year, month, d);
-                // Display: "Friday, 12 December 2025"
-                const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
-                if(dateDisplayInput) dateDisplayInput.value = `${dayName}, ${d} ${monthNames[month]} ${year}`;
-                
-                // Value: YYYY-MM-DD
-                const fmtMonth = String(month + 1).padStart(2, '0');
-                const fmtDay = String(d).padStart(2, '0');
-                if(dateHiddenInput) dateHiddenInput.value = `${year}-${fmtMonth}-${fmtDay}`;
-
-                closeCalendar();
-            };
-            calDaysGrid.appendChild(dayDiv);
+        // 3. Set Priority Button
+        priorityOptions.forEach(o => o.classList.remove('active'));
+        const targetPrio = (data.priority || data.prioritas || 'None').toLowerCase();
+        const match = document.querySelector(`#editSchPrioritySelector .priority-option.${targetPrio}`);
+        
+        if (match) {
+            match.classList.add('active');
+            priorityHidden.value = match.dataset.value;
+        } else {
+            priorityHidden.value = 'None';
+            document.querySelector('#editSchPrioritySelector .priority-option.none')?.classList.add('active');
         }
-    }
 
-    function renderCalMonths() {
-        if (!calMonthsGrid) return;
-        calMonthsGrid.innerHTML = '';
-        const currentMonth = schCalDate.getMonth();
+        // 4. Capture Data Awal (Untuk Sistem Discard)
+        initialEditData = {
+            title: titleInput.value,
+            hari: hariInput.value,
+            startTime: startTimeInput.value,
+            endTime: endTimeInput.value,
+            prio: priorityHidden.value,
+            desc: descriptionInput.value
+        };
 
-        shortMonths.forEach((mName, idx) => {
-            const mDiv = document.createElement('div');
-            mDiv.className = 'schedule-calendar-month-item';
-            mDiv.textContent = mName;
-            
-            mDiv.style.cursor = 'pointer';
-            mDiv.style.padding = '10px';
-            mDiv.style.textAlign = 'center';
-            mDiv.style.borderRadius = '6px';
+        // Tutup Modal Detail jika sedang terbuka
+        const detailOverlay = document.getElementById('schedule-detail-modal-overlay');
+        if (detailOverlay) detailOverlay.style.display = 'none';
+        
+        // Tampilkan Modal Edit
+        editOverlay.style.display = 'flex';
+    };
 
-            if (idx === currentMonth) {
-                mDiv.style.backgroundColor = '#e0e7ff';
-                mDiv.style.color = '#1a3e7f';
-                mDiv.style.fontWeight = 'bold';
-            }
-
-            mDiv.onclick = (e) => {
-                e.stopPropagation();
-                schCalDate.setMonth(idx);
-                currentView = 'days';
-                renderCalendar();
-            };
-            calMonthsGrid.appendChild(mDiv);
-        });
-    }
-
-    function renderCalendar() {
-        updateCalHeader();
-        if (currentView === 'days') renderCalDays();
-        else renderCalMonths();
-    }
-
-    function openCalendar() {
-        // Initialize calendar view to the selected date if exists, else today
-        schCalDate = selectedDate ? new Date(selectedDate) : new Date();
-        currentView = 'days';
-        renderCalendar();
-        if (calPopup) {
-            calPopup.classList.add('active');
-            calPopup.style.display = 'block';
-        }
-    }
-
-    function closeCalendar() {
-        if (calPopup) {
-            calPopup.classList.remove('active');
-            calPopup.style.display = 'none';
-        }
-    }
-
-    // Event Listeners for Date Edit
-    if(dateDisplayInput) {
-        dateDisplayInput.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if(timePopup) timePopup.classList.remove('active');
-            if(calPopup && (calPopup.style.display === 'block' || calPopup.classList.contains('active'))) {
-                closeCalendar();
+    // ============================================
+    // 5. EVENT DELEGATION
+    // ============================================
+    document.body.addEventListener('click', function(e) {
+        const editBtn = e.target.closest('#schDetailEditBtn');
+        if (editBtn) {
+            if (window.currentScheduleDetail) {
+                window.openEditScheduleModal(window.currentScheduleDetail);
             } else {
-                openCalendar();
-            }
-        });
-    }
-
-    if(calMonthLabel) {
-        calMonthLabel.addEventListener('click', (e) => {
-            e.stopPropagation();
-            currentView = (currentView === 'days') ? 'months' : 'days';
-            renderCalendar();
-        });
-    }
-    if(calPrevBtn) {
-        calPrevBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (currentView === 'days') schCalDate.setMonth(schCalDate.getMonth() - 1);
-            else schCalDate.setFullYear(schCalDate.getFullYear() - 1);
-            renderCalendar();
-        });
-    }
-    if(calNextBtn) {
-        calNextBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (currentView === 'days') schCalDate.setMonth(schCalDate.getMonth() + 1);
-            else schCalDate.setFullYear(schCalDate.getFullYear() + 1);
-            renderCalendar();
-        });
-    }
-
-    // Close when clicking outside
-    document.addEventListener('click', (e)=>{
-        if(calPopup && (calPopup.style.display === 'block' || calPopup.classList.contains('active'))) {
-            if(datePickerWrapper && !datePickerWrapper.contains(e.target)) {
-                closeCalendar();
+                console.warn("Variabel window.currentScheduleDetail belum berisi data!");
             }
         }
     });
 
     // ============================================
-    // 5. BUKA MODAL EDIT (LOAD DATA)
-    // ============================================
-    const editDetailBtn = document.getElementById('schDetailEditBtn');
-
-    if (editDetailBtn) {
-        editDetailBtn.onclick = function() {
-            const data = window.currentScheduleDetail;
-            if(!data) {
-                if (typeof showToast === 'function') showToast("Error: No data found.", "error");
-                return;
-            }
-
-            // Fetch Data dari DB
-            fetchCategories();
-
-            if(titleInput) titleInput.value = data.title || "";
-            if(descriptionInput) descriptionInput.value = data.description || "";
-            if(timeDisplay) timeDisplay.value = data.time || "";
-            if(timeHidden) timeHidden.value = data.time || "";
-            
-            // Parse Jam & Menit untuk Time Picker
-            if(data.time && data.time.includes(':')) {
-                const p = data.time.split(':');
-                editHour = parseInt(p[0]); 
-                editMinute = parseInt(p[1]);
-            } else {
-                editHour = 12; editMinute = 0;
-            }
-            updateEditTimeUI(); // Update tampilan awal Time Picker
-            
-            // Set Date Data
-            if(dateHiddenInput) dateHiddenInput.value = data.date || "";
-            if(data.date) {
-                const d = new Date(data.date);
-                if(!isNaN(d.getTime())) {
-                    selectedDate = d; // Set global selected date var
-                    if(dateDisplayInput) dateDisplayInput.value = formatFullDate(d);
-                } else {
-                    selectedDate = null;
-                }
-            } else {
-                selectedDate = null;
-            }
-            
-            if(categoryInput) categoryInput.value = data.category || "";
-            
-            // Priority Selection
-            const prioContainer = document.getElementById('editSchPrioritySelector');
-            if(prioContainer) {
-                prioContainer.querySelectorAll('.priority-option').forEach(o => o.classList.remove('active'));
-                const targetPrio = (data.priority || 'None').toLowerCase();
-                const match = prioContainer.querySelector(`.priority-option.${targetPrio}`);
-                if(match) { 
-                    match.classList.add('active'); 
-                    if(priorityHidden) priorityHidden.value = match.dataset.value; 
-                } else { 
-                    if(priorityHidden) priorityHidden.value = 'None'; 
-                    prioContainer.querySelector('.priority-option.none')?.classList.add('active'); 
-                }
-            }
-
-            initialEditData = {
-                title: titleInput ? titleInput.value : "",
-                desc: descriptionInput ? descriptionInput.value : "",
-                time: timeHidden ? timeHidden.value : "",
-                date: dateHiddenInput ? dateHiddenInput.value : "",
-                cat: categoryInput ? categoryInput.value : "",
-                prio: priorityHidden ? priorityHidden.value : "None"
-            };
-
-            if (detailOverlay) detailOverlay.style.display = 'none';
-            if (editOverlay) editOverlay.style.display = 'flex';
-        };
-    }
-
-    // ============================================
-    // 6. CONFIRM EDIT & DISCARD
+    // 6. SUBMIT DATA KE BACKEND
     // ============================================
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async () => {
-            if (!titleInput || !titleInput.value.trim()) { 
-                if (typeof showToast === 'function') showToast("Please enter Activity Name.", "error"); 
-                return; 
+            const title = titleInput.value.trim();
+            const hari = hariInput.value.trim();
+            const start = startTimeInput.value.trim();
+            const end = endTimeInput.value.trim();
+            const priority = priorityHidden.value;
+            
+            if (!title || !hari || !start || !end) {
+                if (typeof showToast === 'function') showToast("Mohon lengkapi seluruh form.", "error");
+                else alert("Mohon lengkapi seluruh form.");
+                return;
             }
+
             if (!window.currentScheduleDetail || !window.currentScheduleDetail.id) return;
+            
+            const waktu = `${start} - ${end}`;
             
             try {
                 const payload = {
-                    id: window.currentScheduleDetail.id,
-                    title: titleInput.value.trim(),
-                    description: descriptionInput ? descriptionInput.value.trim() : "",
-                    date: dateHiddenInput ? dateHiddenInput.value : "",
-                    time: timeHidden ? timeHidden.value : "",
-                    category: categoryInput ? categoryInput.value.trim() : "Other", 
-                    priority: priorityHidden ? priorityHidden.value : "None"
+                    nama_task: title,
+                    hari: hari,
+                    waktu: waktu,
+                    prioritas: priority
                 };
 
-                const response = await fetch('/edit-schedule', {
+                const response = await fetch(`/rutinitas/${window.currentScheduleDetail.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
+                
                 if (result.success) {
-                    if (typeof showToast === 'function') showToast("Schedule updated!", "success");
-                    initialEditData = { ...initialEditData, ...payload, cat: payload.category };
+                    if (typeof showToast === 'function') showToast(result.message || "Berhasil diedit", "success");
                     closeModal();
-                    if (typeof window.fetchSchedules === 'function') window.fetchSchedules();
+                    
+                    // Refresh data UI
+                    if (typeof window.fetchRutinitas === 'function') window.fetchRutinitas();
                     else location.reload();
                 } else {
-                    if (typeof showToast === 'function') showToast("Failed: " + result.message, "error");
+                    if (typeof showToast === 'function') showToast("Gagal: " + result.message, "error");
+                    else alert("Gagal: " + result.message);
                 }
             } catch (error) { 
                 console.error(error); 
-                if (typeof showToast === 'function') showToast("Server error.", "error");
+                if (typeof showToast === 'function') showToast("Terjadi kesalahan koneksi.", "error");
             }
         });
     }
 
+    // ============================================
+    // 7. SISTEM DISCARD ALERT & CLOSE
+    // ============================================
     function isEditDirty() {
         return (
-            (titleInput && titleInput.value !== initialEditData.title) ||
-            (descriptionInput && descriptionInput.value !== initialEditData.desc) ||
-            (timeHidden && timeHidden.value !== initialEditData.time) ||
-            (dateHiddenInput && dateHiddenInput.value !== initialEditData.date) ||
-            (categoryInput && categoryInput.value !== initialEditData.cat) ||
-            (priorityHidden && priorityHidden.value !== initialEditData.prio)
+            titleInput.value !== initialEditData.title ||
+            hariInput.value !== initialEditData.hari ||
+            startTimeInput.value !== initialEditData.startTime ||
+            endTimeInput.value !== initialEditData.endTime ||
+            priorityHidden.value !== initialEditData.prio ||
+            descriptionInput.value !== initialEditData.desc
         );
     }
 
-    function closeModal() { if (editOverlay) editOverlay.style.display = 'none'; }
-    function handleCloseAttempt() { if (isEditDirty()) showDiscardModal(); else closeModal(); }
+    function closeModal() { 
+        if (editOverlay) editOverlay.style.display = 'none'; 
+    }
+    
+    function handleCloseAttempt() { 
+        if (isEditDirty()) {
+            const discardModal = document.getElementById('discard-modal-overlay');
+            if (discardModal) {
+                discardModal.style.display = 'flex';
+                const modalContent = discardModal.querySelector('.modal');
+                if (modalContent) setTimeout(() => modalContent.classList.add('show'), 10);
+                
+                const noBtn = document.getElementById('discardNoBtn');
+                const yesBtn = document.getElementById('discardYesBtn');
+                
+                const newNo = noBtn.cloneNode(true);
+                const newYes = yesBtn.cloneNode(true);
+                noBtn.parentNode.replaceChild(newNo, noBtn);
+                yesBtn.parentNode.replaceChild(newYes, yesBtn);
 
-    function showDiscardModal() {
-        const discardModal = document.getElementById('discard-modal-overlay');
-        if (discardModal) {
-            discardModal.style.display = 'flex';
-            const modalContent = discardModal.querySelector('.modal');
-            if (modalContent) setTimeout(() => modalContent.classList.add('show'), 10);
-            
-            const noBtn = document.getElementById('discardNoBtn');
-            const yesBtn = document.getElementById('discardYesBtn');
-            const newNo = noBtn.cloneNode(true);
-            const newYes = yesBtn.cloneNode(true);
-            noBtn.parentNode.replaceChild(newNo, noBtn);
-            yesBtn.parentNode.replaceChild(newYes, yesBtn);
-
-            newNo.onclick = () => { if (modalContent) modalContent.classList.remove('show'); setTimeout(() => discardModal.style.display = 'none', 300); };
-            newYes.onclick = () => { if (modalContent) modalContent.classList.remove('show'); setTimeout(() => { discardModal.style.display = 'none'; closeModal(); }, 300); };
+                newNo.onclick = () => { 
+                    if (modalContent) modalContent.classList.remove('show'); 
+                    setTimeout(() => discardModal.style.display = 'none', 300); 
+                };
+                
+                newYes.onclick = () => { 
+                    if (modalContent) modalContent.classList.remove('show'); 
+                    setTimeout(() => { discardModal.style.display = 'none'; closeModal(); }, 300); 
+                };
+            } else {
+                closeModal();
+            }
+        } else {
+            closeModal(); 
         }
     }
 
     if (closeBtn) closeBtn.addEventListener('click', handleCloseAttempt);
     if (cancelBtn) cancelBtn.addEventListener('click', handleCloseAttempt);
-
-    // Priority Click Listener
-    const prioOptions = document.querySelectorAll('#editSchPrioritySelector .priority-option');
-    prioOptions.forEach(opt => {
-        opt.addEventListener('click', () => {
-            prioOptions.forEach(o => o.classList.remove('active'));
-            opt.classList.add('active');
-            if(priorityHidden) priorityHidden.value = opt.dataset.value;
-        });
-    });
 });

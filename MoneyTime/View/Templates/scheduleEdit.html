@@ -1,3 +1,4 @@
+<!-- Mulai langsung dari kotak putih modal, JANGAN tambahkan overlay lagi -->
 <div class="schedule-modal">
     <div class="schedule-modal-header">
         <b class="schedule-modal-title">Edit Schedule</b>
@@ -7,6 +8,7 @@
     </div>
 
     <div class="schedule-form">
+        <!-- Row 1: Activity Name & Hari -->
         <div class="schedule-form-row">
             <div class="schedule-form-field">
                 <label class="schedule-form-label" for="editSchTitle">Activity Name</label>
@@ -19,112 +21,61 @@
             </div>
 
             <div class="schedule-form-field">
-                <label class="schedule-form-label" for="editSchTimeDisplay">Time</label>
+                <label class="schedule-form-label" for="editSchHariInput">Hari</label>
                 <div class="schedule-form-input">
-                    <div class="schedule-time-picker-wrapper" id="editSchTimePickerWrapper">
-                        <div class="schedule-text-input">
-                            <input type="text" id="editSchTimeDisplay" class="schedule-input-field"
-                                placeholder="Select Time" readonly style="cursor: pointer;">
-                            <input type="hidden" id="editSchTime" name="time">
-                            <i class="fa-regular fa-clock" style="color: #555; font-size: 16px;"></i>
-                        </div>
-                        <div class="custom-time-popup" id="editSchTimePopup">
-                            <div class="time-popup-title">Select Time</div>
-                            <div class="time-picker-container">
-                                <div class="time-column">
-                                    <button type="button" class="time-nav-btn" id="editSchHourUp"><i
-                                            class="fa-solid fa-chevron-up"></i></button>
-                                    <div class="time-scroll-view" id="editSchHourScrollView">
-                                        <div class="time-value prev" id="editSchHourPrev">--</div>
-                                        <input type="text" class="time-value current time-input" id="editSchHourInput"
-                                            value="12" maxlength="2" inputmode="numeric">
-                                        <div class="time-value next" id="editSchHourNext">--</div>
-                                    </div>
-                                    <button type="button" class="time-nav-btn" id="editSchHourDown"><i
-                                            class="fa-solid fa-chevron-down"></i></button>
-                                </div>
-                                <div class="time-separator">:</div>
-                                <div class="time-column">
-                                    <button type="button" class="time-nav-btn" id="editSchMinuteUp"><i
-                                            class="fa-solid fa-chevron-up"></i></button>
-                                    <div class="time-scroll-view" id="editSchMinuteScrollView">
-                                        <div class="time-value prev" id="editSchMinutePrev">--</div>
-                                        <input type="text" class="time-value current time-input" id="editSchMinuteInput"
-                                            value="00" maxlength="2" inputmode="numeric">
-                                        <div class="time-value next" id="editSchMinuteNext">--</div>
-                                    </div>
-                                    <button type="button" class="time-nav-btn" id="editSchMinuteDown"><i
-                                            class="fa-solid fa-chevron-down"></i></button>
-                                </div>
-                            </div>
-                            <div class="time-popup-actions">
-                                <button type="button" class="time-btn-confirm" id="editSchTimeOkBtn">OK</button>
-                                <button type="button" class="time-btn-cancel" id="editSchTimeCancelBtn">Cancel</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="schedule-form-row">
-            <div class="schedule-form-field">
-                <label class="schedule-form-label" for="editSchDateDisplay">Date</label>
-                <div class="schedule-form-input">
-                    <div class="schedule-date-picker-wrapper" id="editSchDatePickerWrapper">
-                        <div class="schedule-date-input-display">
-                            <input type="text" class="schedule-input-field" id="editSchDateDisplay"
-                                placeholder="Select Date" readonly style="cursor: pointer;">
-                            <input type="hidden" id="editSchDate" name="date">
-                            <i class="fa-regular fa-calendar" style="color: #1a3e7f; font-size: 18px;"></i>
-                        </div>
-                        <div class="schedule-calendar-popup" id="editSchCalendarPopup">
-                            <div class="schedule-calendar-header">
-                                <button type="button" class="schedule-calendar-nav-btn" id="editSchCalPrevBtn"><i
-                                        class="fa-solid fa-chevron-left"></i></button>
-                                <span class="schedule-calendar-month-label" id="editSchCalMonthLabel">Loading...</span>
-                                <button type="button" class="schedule-calendar-nav-btn" id="editSchCalNextBtn"><i
-                                        class="fa-solid fa-chevron-right"></i></button>
-                            </div>
-                            <div id="editSchCalendarViewDays">
-                                <div class="schedule-calendar-weekdays">
-                                    <div>Su</div>
-                                    <div>Mo</div>
-                                    <div>Tu</div>
-                                    <div>We</div>
-                                    <div>Th</div>
-                                    <div>Fr</div>
-                                    <div>Sa</div>
-                                </div>
-                                <div class="schedule-calendar-days-grid" id="editSchCalDaysGrid"></div>
-                            </div>
-                            <div id="editSchCalendarViewMonths" style="display: none;">
-                                <div class="schedule-calendar-months-grid" id="editSchCalMonthsGrid"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="schedule-form-field">
-                <label class="schedule-form-label" for="editSchCategoryInput">Category</label>
-                <div class="schedule-form-input">
-                    <div class="schedule-custom-dropdown" id="editSchCategoryDropdown">
+                    <div class="schedule-custom-dropdown" id="editSchHariDropdown">
                         <div class="schedule-dropdown-header">
-                            <input type="text" id="editSchCategoryInput" class="schedule-dropdown-input"
-                                placeholder="Select or type category">
+                            <input type="text" id="editSchHariInput" class="schedule-dropdown-input"
+                                placeholder="Select Hari" readonly style="cursor: pointer;">
                             <i class="fa-solid fa-chevron-down schedule-dropdown-arrow"
                                 style="color: #1a3e7f; font-size: 14px;"></i>
                         </div>
-                        <div class="schedule-dropdown-list">
-                            <button type="button" class="schedule-dropdown-add-btn" id="editSchAddCategoryBtn"
-                                style="display:none;">Add new category</button>
+                        <div class="schedule-dropdown-list" id="editSchHariList">
+                            <!-- Pilihan hari di-generate via JS -->
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Row 2: Start Time & End Time -->
+        <div class="schedule-form-row">
+            <div class="schedule-form-field">
+                <label class="schedule-form-label" for="editSchStartTimeInput">Start Time</label>
+                <div class="schedule-form-input">
+                    <div class="schedule-custom-dropdown" id="editSchStartTimeDropdown">
+                        <div class="schedule-dropdown-header">
+                            <input type="text" id="editSchStartTimeInput" class="schedule-dropdown-input"
+                                placeholder="00:00" readonly style="cursor: pointer;">
+                            <i class="fa-solid fa-clock schedule-dropdown-arrow"
+                                style="color: #555; font-size: 16px;"></i>
+                        </div>
+                        <div class="schedule-dropdown-list" id="editSchStartTimeList">
+                            <!-- Pilihan start time di-generate via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="schedule-form-field">
+                <label class="schedule-form-label" for="editSchEndTimeInput">End Time</label>
+                <div class="schedule-form-input">
+                    <div class="schedule-custom-dropdown" id="editSchEndTimeDropdown">
+                        <div class="schedule-dropdown-header">
+                            <input type="text" id="editSchEndTimeInput" class="schedule-dropdown-input"
+                                placeholder="00:30" readonly style="cursor: pointer;">
+                            <i class="fa-solid fa-clock schedule-dropdown-arrow"
+                                style="color: #555; font-size: 16px;"></i>
+                        </div>
+                        <div class="schedule-dropdown-list" id="editSchEndTimeList">
+                            <!-- Pilihan end time di-generate via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Priority -->
         <div class="schedule-form-row single-col">
             <div class="schedule-form-field priority-field">
                 <label class="schedule-form-label">Priority</label>
@@ -139,15 +90,17 @@
             </div>
         </div>
 
+        <!-- Row 4: Description -->
         <div class="schedule-form-row single-col">
             <div class="schedule-form-field">
-                <label class="schedule-form-label" style="align-self: flex-start; margin-top: 10px;">Description</label>
+                <label class="schedule-form-label" for="editSchDescription" style="align-self: flex-start; margin-top: 10px;">Description</label>
                 <div class="schedule-form-input">
-                    <textarea class="schedule-textarea" id="editSchDescription"
-                        placeholder="Enter detailed description here..." style="height: 100px;"></textarea>
+                    <textarea class="schedule-textarea" id="editSchDescription" 
+                        placeholder="Enter detailed description here..."></textarea>
                 </div>
             </div>
         </div>
+
     </div>
 
     <div class="schedule-actions">
